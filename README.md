@@ -2,7 +2,7 @@
 
 SPA на **Vite + React + TypeScript** для просмотра телеметрии.
 
-Общая документация проекта: [**beeplan-docs**](https://github.com/beeplan/beeplan-docs) (замените `github.com/beeplan`, если ваш org другой).
+Общая документация проекта: [**beeplan-docs**](https://github.com/4sidora/beeplan-docs).
 
 ## Запуск
 
