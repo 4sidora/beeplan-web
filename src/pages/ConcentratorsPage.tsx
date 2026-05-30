@@ -22,6 +22,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import { api, type Concentrator } from "../api";
 import { ApiarySelect } from "../components/ApiarySelect";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -132,6 +133,7 @@ export function ConcentratorsPage() {
               <TableRow>
                 <TableCell>ID</TableCell>
                 <TableCell>Название</TableCell>
+                <TableCell>MAC</TableCell>
                 <TableCell>Ingest token</TableCell>
                 <TableCell align="right">Действия</TableCell>
               </TableRow>
@@ -141,6 +143,11 @@ export function ConcentratorsPage() {
                 <TableRow key={row.id}>
                   <TableCell>{row.id}</TableCell>
                   <TableCell>{row.name}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
+                      {row.gateway_mac ?? "—"}
+                    </Typography>
+                  </TableCell>
                   <TableCell>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                       <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
@@ -154,6 +161,14 @@ export function ConcentratorsPage() {
                     </Box>
                   </TableCell>
                   <TableCell align="right">
+                    <Button
+                      size="small"
+                      component={RouterLink}
+                      to={`/install/gateway?concentrator_id=${row.id}`}
+                      sx={{ mr: 1 }}
+                    >
+                      Прошить
+                    </Button>
                     <IconButton size="small" onClick={() => openEdit(row)}>
                       <EditIcon fontSize="small" />
                     </IconButton>

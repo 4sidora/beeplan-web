@@ -20,6 +20,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import { api, type EdgeDevice } from "../api";
 import { ApiarySelect } from "../components/ApiarySelect";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -138,6 +139,9 @@ export function DevicesPage() {
     <>
       <PageHeader title="Устройства">
         <ApiarySelect value={apiaryId} onChange={setApiaryId} />
+        <Button component={RouterLink} to="/install/edge" variant="outlined" sx={{ mr: 1 }}>
+          Прошить устройство
+        </Button>
         <Button
           variant="contained"
           startIcon={<AddIcon />}

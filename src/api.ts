@@ -48,7 +48,15 @@ export type ColonyPayload = {
   hive_volume_m3?: number | null;
 };
 export type BeeBreed = { id: number; name: string };
-export type Concentrator = { id: number; apiary_id: number; name: string; ingest_token: string };
+export type Concentrator = {
+  id: number;
+  apiary_id: number;
+  name: string;
+  ingest_token: string;
+  gateway_mac: string | null;
+  last_seen_at: string | null;
+  firmware_version: string | null;
+};
 export type EdgeDevice = {
   id: number;
   concentrator_id: number;
@@ -58,6 +66,20 @@ export type EdgeDevice = {
   current_colony_id: number | null;
 };
 export type TelemetryPoint = { ts: string; metric: string; value: unknown };
+
+export type FirmwareBuild = {
+  id: string;
+  device_type: string;
+  board: string;
+  concentrator_id: number;
+  edge_device_id: number | null;
+  status: string;
+  error: string | null;
+  manifest_url: string | null;
+  expires_at: string;
+  created_at: string;
+  finished_at: string | null;
+};
 
 export type TelemetryParams = {
   metric?: string;
@@ -127,6 +149,7 @@ export const api = {
     apiFetch<Concentrator[]>(
       `/v1/concentrators?apiary_id=${encodeURIComponent(String(apiaryId))}`,
     ),
+  concentrator: (id: number) => apiFetch<Concentrator>(`/v1/concentrators/${id}`),
   createConcentrator: (apiaryId: number, name: string) =>
     apiFetch<Concentrator>("/v1/concentrators", {
       method: "POST",
@@ -176,4 +199,21 @@ export const api = {
     apiFetch<TelemetryPoint[]>(
       `/v1/colonies/${encodeURIComponent(String(colonyId))}/telemetry${telemetryQuery(params)}`,
     ),
+
+  createFirmwareBuild: (body: {
+    device_type: "gateway" | "edge";
+    board?: string;
+    concentrator_id: number;
+    edge_device_id?: number | null;
+    wifi_ssid?: string;
+    wifi_password?: string;
+    api_base_url?: string;
+    wake_interval_sec?: number;
+  }) =>
+    apiFetch<FirmwareBuild>("/v1/firmware/builds", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  firmwareBuild: (id: string) => apiFetch<FirmwareBuild>(`/v1/firmware/builds/${id}`),
 };

@@ -12,6 +12,7 @@ import ListItemText from "@mui/material/ListItemText";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
+import UsbIcon from "@mui/icons-material/Usb";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import YardIcon from "@mui/icons-material/Yard";
 import GroupsIcon from "@mui/icons-material/Groups";
@@ -30,6 +31,7 @@ const navItems = [
   { to: "/apiaries", label: "Пасеки", icon: <YardIcon /> },
   { to: "/colonies", label: "Семьи", icon: <GroupsIcon /> },
   { to: "/concentrators", label: "Концентраторы", icon: <RouterIcon /> },
+  { to: "/install", label: "Прошивка", icon: <UsbIcon /> },
   { to: "/devices", label: "Устройства", icon: <DevicesIcon /> },
   { to: "/telemetry", label: "Телеметрия", icon: <ShowChartIcon /> },
 ];

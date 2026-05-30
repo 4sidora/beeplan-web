@@ -9,6 +9,9 @@ import { ColonyEditPage } from "./pages/ColonyEditPage";
 import { ConcentratorsPage } from "./pages/ConcentratorsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { DevicesPage } from "./pages/DevicesPage";
+import { EdgeInstallPage } from "./pages/EdgeInstallPage";
+import { GatewayInstallPage } from "./pages/GatewayInstallPage";
+import { InstallOverviewPage } from "./pages/InstallOverviewPage";
 import { LoginPage } from "./pages/LoginPage";
 import { TelemetryPage } from "./pages/TelemetryPage";
 import { returnPathFromState } from "./utils/returnUrl";
@@ -36,6 +39,9 @@ export default function App() {
         <Route path="concentrators" element={<ConcentratorsPage />} />
         <Route path="devices" element={<DevicesPage />} />
         <Route path="telemetry" element={<TelemetryPage />} />
+        <Route path="install" element={<InstallOverviewPage />} />
+        <Route path="install/gateway" element={<GatewayInstallPage />} />
+        <Route path="install/edge" element={<EdgeInstallPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
