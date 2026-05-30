@@ -2,16 +2,21 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Paper from "@mui/material/Paper";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
-import { BeeBreedSelect } from "../components/BeeBreedSelect";
+import { ColonyFormFields } from "../components/ColonyFormFields";
 import { PageHeader } from "../components/PageHeader";
 import { useSnackbar } from "../components/SnackbarProvider";
 import { useApiaryParam } from "../hooks/useApiaryParam";
+import {
+  hiveFieldsFromColony,
+  hiveFieldsToPayload,
+  type ColonyTypeCode,
+  type HiveFieldState,
+} from "../utils/colonyCatalog";
 
 export function ColonyEditPage() {
   const { colonyId: rawId } = useParams();
@@ -28,19 +33,39 @@ export function ColonyEditPage() {
   });
 
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [colonyType, setColonyType] = useState<ColonyTypeCode | "">("");
+  const [hiveFields, setHiveFields] = useState<HiveFieldState>({
+    hiveType: "",
+    bodyCount: "",
+    framesPerBody: "",
+    hiveVolumeM3: "",
+  });
   const [beeBreed, setBeeBreed] = useState("");
 
   useEffect(() => {
     if (colony.data) {
-      setName(colony.data.name);
-      setBeeBreed(colony.data.bee_breed ?? "");
-      setApiaryId(colony.data.apiary_id);
+      const c = colony.data;
+      setName(c.name);
+      setDescription(c.description ?? "");
+      setColonyType((c.colony_type as ColonyTypeCode) ?? "");
+      setHiveFields(hiveFieldsFromColony(c));
+      setBeeBreed(c.bee_breed ?? "");
+      setApiaryId(c.apiary_id);
     }
   }, [colony.data, setApiaryId]);
 
   const save = useMutation({
-    mutationFn: () =>
-      api.updateColony(colonyId, { name, bee_breed: beeBreed.trim() || null }),
+    mutationFn: () => {
+      const hive = hiveFieldsToPayload(hiveFields);
+      return api.updateColony(colonyId, {
+        name: name.trim(),
+        description: description.trim() || null,
+        bee_breed: beeBreed.trim() || null,
+        colony_type: colonyType || null,
+        ...hive,
+      });
+    },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["colonies", data.apiary_id] });
       qc.invalidateQueries({ queryKey: ["colony", colonyId] });
@@ -81,21 +106,24 @@ export function ColonyEditPage() {
       <PageHeader title={`Редактирование: ${c.name}`} />
       <Paper
         component="form"
-        sx={{ p: 3, maxWidth: 480 }}
+        sx={{ p: 3, maxWidth: 560 }}
         onSubmit={(e) => {
           e.preventDefault();
           if (name.trim() && !save.isPending) save.mutate();
         }}
       >
-        <TextField
-          autoFocus
-          fullWidth
-          label="Название"
-          margin="normal"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+        <ColonyFormFields
+          name={name}
+          onNameChange={setName}
+          description={description}
+          onDescriptionChange={setDescription}
+          colonyType={colonyType}
+          onColonyTypeChange={setColonyType}
+          hiveFields={hiveFields}
+          onHiveFieldsChange={setHiveFields}
+          beeBreed={beeBreed}
+          onBeeBreedChange={setBeeBreed}
         />
-        <BeeBreedSelect value={beeBreed} onChange={setBeeBreed} />
         <Box sx={{ mt: 3, display: "flex", gap: 1 }}>
           <Button type="submit" variant="contained" disabled={!name.trim() || save.isPending}>
             Сохранить

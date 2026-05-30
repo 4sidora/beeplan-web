@@ -13,19 +13,29 @@ import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { api, type Colony } from "../api";
 import { ApiarySelect } from "../components/ApiarySelect";
-import { BeeBreedSelect } from "../components/BeeBreedSelect";
+import { ColonyFormFields } from "../components/ColonyFormFields";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { FormDialog } from "../components/FormDialog";
 import { PageHeader } from "../components/PageHeader";
 import { useSnackbar } from "../components/SnackbarProvider";
 import { useApiaryParam } from "../hooks/useApiaryParam";
+import {
+  defaultHiveFieldsForType,
+  hiveFieldsToPayload,
+  type ColonyTypeCode,
+  type HiveFieldState,
+} from "../utils/colonyCatalog";
+import { generateColonyName } from "../utils/colonyNames";
+
+function emptyHiveFields(): HiveFieldState {
+  return { hiveType: "", bodyCount: "", framesPerBody: "", hiveVolumeM3: "" };
+}
 
 export function ColoniesPage() {
   const qc = useQueryClient();
@@ -47,13 +57,35 @@ export function ColoniesPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [colonyType, setColonyType] = useState<ColonyTypeCode | "">("");
+  const [hiveFields, setHiveFields] = useState<HiveFieldState>(emptyHiveFields());
   const [beeBreed, setBeeBreed] = useState("");
   const [deleteItem, setDeleteItem] = useState<Colony | null>(null);
+
+  const openCreate = () => {
+    setName(generateColonyName());
+    setDescription("");
+    setColonyType("colony");
+    setHiveFields({
+      hiveType: "dadant",
+      ...defaultHiveFieldsForType("dadant"),
+    } as HiveFieldState);
+    setBeeBreed("");
+    setDialogOpen(true);
+  };
 
   const save = useMutation({
     mutationFn: async () => {
       if (apiaryId == null) throw new Error("Выберите пасеку");
-      return api.createColony(apiaryId, { name, bee_breed: beeBreed.trim() || null });
+      const hive = hiveFieldsToPayload(hiveFields);
+      return api.createColony(apiaryId, {
+        name: name.trim(),
+        description: description.trim() || null,
+        bee_breed: beeBreed.trim() || null,
+        colony_type: colonyType || null,
+        ...hive,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["colonies", apiaryId] });
@@ -80,11 +112,7 @@ export function ColoniesPage() {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => {
-            setName("");
-            setBeeBreed("");
-            setDialogOpen(true);
-          }}
+          onClick={openCreate}
           disabled={apiaryId == null}
         >
           Добавить
@@ -158,16 +186,21 @@ export function ColoniesPage() {
         onSubmit={() => save.mutate()}
         submitting={save.isPending}
         submitDisabled={!name.trim()}
+        maxWidth="sm"
       >
-        <TextField
-          autoFocus
-          fullWidth
-          label="Название"
-          margin="normal"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+        <ColonyFormFields
+          name={name}
+          onNameChange={setName}
+          onRegenerateName={() => setName(generateColonyName())}
+          description={description}
+          onDescriptionChange={setDescription}
+          colonyType={colonyType}
+          onColonyTypeChange={setColonyType}
+          hiveFields={hiveFields}
+          onHiveFieldsChange={setHiveFields}
+          beeBreed={beeBreed}
+          onBeeBreedChange={setBeeBreed}
         />
-        <BeeBreedSelect value={beeBreed} onChange={setBeeBreed} />
       </FormDialog>
 
       <ConfirmDialog

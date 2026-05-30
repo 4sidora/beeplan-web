@@ -1,28 +1,40 @@
+import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import CircularProgress from "@mui/material/CircularProgress";
-import Paper from "@mui/material/Paper";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
+import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
 import EditIcon from "@mui/icons-material/Edit";
-import DevicesOtherIcon from "@mui/icons-material/DevicesOther";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useQuery } from "@tanstack/react-query";
 import "dayjs/locale/ru";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import { api } from "../api";
+import { ColonyDevicesSection } from "../components/ColonyDevicesSection";
 import { PageHeader } from "../components/PageHeader";
 import { PeriodSelector } from "../components/PeriodSelector";
 import { TelemetryChart } from "../components/TelemetryChart";
 import { useLocalTelemetryPeriod } from "../hooks/useLocalTelemetryPeriod";
+import {
+  colonyTypeLabel,
+  formatHiveDetails,
+  hiveTypeLabel,
+} from "../utils/colonyCatalog";
 import { pointsToSingleSeries } from "../utils/telemetry";
+
+function ParamRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <Grid size={{ xs: 12, sm: 6 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+        {label}
+      </Typography>
+      <Typography variant="body1">{value}</Typography>
+    </Grid>
+  );
+}
 
 export function ColonyDetailPage() {
   const { colonyId: rawId } = useParams();
@@ -37,13 +49,13 @@ export function ColonyDetailPage() {
 
   const apiaryId = colony.data?.apiary_id ?? null;
 
-  const devices = useQuery({
-    queryKey: ["edge-devices", apiaryId],
-    queryFn: () => api.edgeDevices(apiaryId!),
-    enabled: apiaryId != null,
+  const apiaries = useQuery({
+    queryKey: ["apiaries"],
+    queryFn: api.apiaries,
   });
 
-  const colonyDevices = (devices.data ?? []).filter((d) => d.current_colony_id === colonyId);
+  const apiaryName =
+    apiaries.data?.find((a) => a.id === apiaryId)?.name ?? (apiaryId != null ? `ID ${apiaryId}` : "—");
 
   const tempQuery = useQuery({
     queryKey: ["telemetry", colonyId, "temperature_c", fromIso, toIso],
@@ -76,8 +88,6 @@ export function ColonyDetailPage() {
 
   const c = colony.data;
   const editPath = `/colonies/${c.id}/edit?apiary_id=${c.apiary_id}`;
-  const devicesPath = `/colonies/${c.id}/devices?apiary_id=${c.apiary_id}`;
-  const telemetryPath = `/telemetry?apiary_id=${c.apiary_id}&mode=single&colony_id=${c.id}`;
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru">
@@ -92,25 +102,39 @@ export function ColonyDetailPage() {
 
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Typography variant="subtitle2" color="text.secondary">
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Параметры семьи
           </Typography>
-          <Typography variant="body1" sx={{ mt: 1 }}>
-            <strong>ID:</strong> {c.id}
+          <Grid container spacing={2}>
+            <ParamRow label="Название" value={c.name} />
+            <ParamRow label="Пасека" value={apiaryName} />
+            <ParamRow label="Порода" value={c.bee_breed ?? "—"} />
+            <ParamRow label="Тип семьи" value={colonyTypeLabel(c.colony_type)} />
+            <ParamRow label="Тип улья" value={hiveTypeLabel(c.hive_type)} />
+            <ParamRow
+              label="Улей"
+              value={formatHiveDetails(
+                c.hive_type,
+                c.body_count,
+                c.frames_per_body,
+                c.hive_volume_m3,
+              )}
+            />
+            {c.description ? (
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                  Описание
+                </Typography>
+                <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
+                  {c.description}
+                </Typography>
+              </Grid>
+            ) : null}
+          </Grid>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: "block" }}>
+            ID семьи: {c.id}
           </Typography>
-          <Typography variant="body1">
-            <strong>Порода:</strong> {c.bee_breed ?? "—"}
-          </Typography>
-          <Typography variant="body1">
-            <strong>Пасека ID:</strong> {c.apiary_id}
-          </Typography>
-          <Box sx={{ mt: 2, display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button size="small" component={RouterLink} to={devicesPath} startIcon={<DevicesOtherIcon />}>
-              Устройства семьи
-            </Button>
-            <Button size="small" component={RouterLink} to={telemetryPath}>
-              Телеметрия семьи
-            </Button>
+          <Box sx={{ mt: 2 }}>
             <Button size="small" component={RouterLink} to={`/colonies?apiary_id=${c.apiary_id}`}>
               К списку семей
             </Button>
@@ -118,40 +142,8 @@ export function ColonyDetailPage() {
         </CardContent>
       </Card>
 
-      <Typography variant="h6" gutterBottom>
-        Подключённые устройства
-      </Typography>
-      {colonyDevices.length === 0 ? (
-        <Typography color="text.secondary" sx={{ mb: 3 }}>
-          Нет привязанных устройств.{" "}
-          <RouterLink to={devicesPath}>Добавить или привязать устройство</RouterLink>
-        </Typography>
-      ) : (
-        <Paper sx={{ mb: 3 }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Public ID</TableCell>
-                <TableCell>Метка</TableCell>
-                <TableCell>Статус</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {colonyDevices.map((d) => (
-                <TableRow key={d.id}>
-                  <TableCell sx={{ fontFamily: "monospace" }}>{d.public_id}</TableCell>
-                  <TableCell>{d.label ?? "—"}</TableCell>
-                  <TableCell>Привязано</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <Box sx={{ p: 1.5 }}>
-            <Button size="small" component={RouterLink} to={devicesPath}>
-              Управление устройствами
-            </Button>
-          </Box>
-        </Paper>
+      {apiaryId != null && (
+        <ColonyDevicesSection colonyId={colonyId} apiaryId={apiaryId} showTitle />
       )}
 
       <Typography variant="h6" gutterBottom>

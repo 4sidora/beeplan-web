@@ -24,12 +24,35 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export type Apiary = { id: number; name: string };
-export type Colony = { id: number; apiary_id: number; name: string; bee_breed: string | null };
+export type Colony = {
+  id: number;
+  apiary_id: number;
+  name: string;
+  bee_breed: string | null;
+  description: string | null;
+  colony_type: string | null;
+  hive_type: string | null;
+  body_count: number | null;
+  frames_per_body: number | null;
+  hive_volume_m3: number | null;
+};
+
+export type ColonyPayload = {
+  name: string;
+  bee_breed?: string | null;
+  description?: string | null;
+  colony_type?: string | null;
+  hive_type?: string | null;
+  body_count?: number | null;
+  frames_per_body?: number | null;
+  hive_volume_m3?: number | null;
+};
 export type BeeBreed = { id: number; name: string };
 export type Concentrator = { id: number; apiary_id: number; name: string; ingest_token: string };
 export type EdgeDevice = {
   id: number;
   concentrator_id: number;
+  concentrator_name: string | null;
   public_id: string;
   label: string | null;
   current_colony_id: number | null;
@@ -80,16 +103,18 @@ export const api = {
   deleteApiary: (id: number) =>
     apiFetch<void>(`/v1/apiaries/${id}`, { method: "DELETE" }),
 
+  suggestedColonyName: () => apiFetch<{ name: string }>("/v1/colonies/suggested-name"),
+
   colonies: (apiaryId: number) =>
     apiFetch<Colony[]>(`/v1/colonies?apiary_id=${encodeURIComponent(String(apiaryId))}`),
   colony: (id: number) => apiFetch<Colony>(`/v1/colonies/${id}`),
-  createColony: (apiaryId: number, body: { name: string; bee_breed?: string | null }) =>
+  createColony: (apiaryId: number, body: ColonyPayload) =>
     apiFetch<Colony>("/v1/colonies", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ apiary_id: apiaryId, ...body }),
     }),
-  updateColony: (id: number, body: { name: string; bee_breed?: string | null }) =>
+  updateColony: (id: number, body: ColonyPayload) =>
     apiFetch<Colony>(`/v1/colonies/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
