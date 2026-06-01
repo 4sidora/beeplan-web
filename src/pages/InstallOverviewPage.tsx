@@ -31,7 +31,10 @@ export function InstallOverviewPage() {
           </Alert>
         )}
         <Alert severity="info" sx={{ mb: 2 }}>
-          Порядок: сначала <strong>концентратор</strong>, затем <strong>улей</strong> (edge).
+          Порядок для новых устройств: сначала <strong>концентратор</strong>, затем{" "}
+          <strong>улей</strong> (edge). Уже зарегистрированные — прошивайте из списков{" "}
+          <RouterLink to="/concentrators">концентраторов</RouterLink> или{" "}
+          <RouterLink to="/devices">устройств</RouterLink>.
         </Alert>
         <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
           <Button variant="contained" component={RouterLink} to="/install/gateway">

@@ -15,8 +15,10 @@ import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { api, type Concentrator, type FirmwareBuild } from "../api";
 import { ApiarySelect } from "../components/ApiarySelect";
 import { EspWebInstallButton, isWebSerialSupported } from "../components/EspWebInstallButton";
+import { FirmwareVersionInfo } from "../components/FirmwareVersionInfo";
 import { PageHeader } from "../components/PageHeader";
 import { useSnackbar } from "../components/SnackbarProvider";
+import { FIRMWARE_BOARDS, type FirmwareBoardId } from "../constants/boards";
 import { useApiaryParam } from "../hooks/useApiaryParam";
 
 function defaultDeviceApiUrl(): string {
@@ -55,6 +57,7 @@ export function GatewayInstallPage() {
   const [wifiSsid, setWifiSsid] = useState("");
   const [wifiPassword, setWifiPassword] = useState("");
   const [apiBaseUrl, setApiBaseUrl] = useState(deviceApiUrl);
+  const [board, setBoard] = useState<FirmwareBoardId>("esp32dev");
   const [build, setBuild] = useState<FirmwareBuild | null>(null);
   const [polling, setPolling] = useState(false);
 
@@ -83,7 +86,7 @@ export function GatewayInstallPage() {
     mutationFn: () =>
       api.createFirmwareBuild({
         device_type: "gateway",
-        board: "esp32dev",
+        board,
         concentrator_id: Number(concentratorId),
         wifi_ssid: wifiSsid,
         wifi_password: wifiPassword,
@@ -143,8 +146,8 @@ export function GatewayInstallPage() {
       <PageHeader
         title="Прошивка концентратора"
         actions={
-          <Button component={RouterLink} to="/install" size="small">
-            К обзору
+          <Button component={RouterLink} to="/devices" size="small">
+            К устройствам
           </Button>
         }
       />
@@ -164,6 +167,13 @@ export function GatewayInstallPage() {
       </Stepper>
 
       <Paper sx={{ p: 3, maxWidth: 640 }}>
+        <FirmwareVersionInfo
+          deviceType="gateway"
+          installedVersion={selectedConc?.firmware_version}
+          build={build}
+          compact={activeStep < 2}
+        />
+
         {activeStep === 0 && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <ApiarySelect value={apiaryId} onChange={setApiaryId} />
@@ -177,9 +187,16 @@ export function GatewayInstallPage() {
               {(concentrators.data ?? []).map((c: Concentrator) => (
                 <MenuItem key={c.id} value={c.id}>
                   {c.name}
+                  {c.gateway_mac ? ` · ${c.gateway_mac}` : ""}
                 </MenuItem>
               ))}
             </TextField>
+            {selectedConc?.gateway_mac && (
+              <Alert severity="info">
+                Перепрошивка существующего концентратора. MAC уже зарегистрирован:{" "}
+                {selectedConc.gateway_mac}. После прошивки heartbeat обновит статус.
+              </Alert>
+            )}
             <Button
               variant="contained"
               disabled={!concentratorId}
@@ -192,6 +209,20 @@ export function GatewayInstallPage() {
 
         {activeStep === 1 && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <TextField
+              select
+              label="Плата (MCU)"
+              value={board}
+              onChange={(e) => setBoard(e.target.value as FirmwareBoardId)}
+              fullWidth
+              helperText="CORE-ESP32-C3 (CH343) — первый пункт. C3 с нативным USB — «нативный USB»"
+            >
+              {FIRMWARE_BOARDS.map((b) => (
+                <MenuItem key={b.id} value={b.id}>
+                  {b.label}
+                </MenuItem>
+              ))}
+            </TextField>
             <TextField
               label="Wi‑Fi SSID"
               value={wifiSsid}
@@ -250,6 +281,9 @@ export function GatewayInstallPage() {
             {build.status === "ready" && build.manifest_url && (
               <>
                 <Alert severity="success">Прошивка готова. Подключите ESP32 и нажмите кнопку ниже.</Alert>
+                <Alert severity="info">
+                  Для монитора в Arduino IDE закройте вкладку после прошивки (COM-порт занят WebSerial).
+                </Alert>
                 <EspWebInstallButton manifestUrl={build.manifest_url} />
                 <Button variant="outlined" onClick={() => setActiveStep(4)}>
                   Я прошил — жду heartbeat
@@ -270,7 +304,7 @@ export function GatewayInstallPage() {
                 <Button
                   variant="contained"
                   component={RouterLink}
-                  to={`/install/edge?concentrator_id=${concentratorId}`}
+                  to={`/devices/install/edge?concentrator_id=${concentratorId}`}
                   disabled={!concentratorPoll.data?.gateway_mac}
                 >
                   Прошить улей

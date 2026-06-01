@@ -1,7 +1,5 @@
 import AddIcon from "@mui/icons-material/Add";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -10,21 +8,14 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
-import IconButton from "@mui/material/IconButton";
-import Paper from "@mui/material/Paper";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
+import Grid from "@mui/material/Grid";
 import TextField from "@mui/material/TextField";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
 import { api, type Concentrator } from "../api";
 import { ApiarySelect } from "../components/ApiarySelect";
+import { ConcentratorCard } from "../components/ConcentratorCard";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PageHeader } from "../components/PageHeader";
 import { useSnackbar } from "../components/SnackbarProvider";
@@ -46,6 +37,7 @@ export function ConcentratorsPage() {
     queryKey: ["concentrators", apiaryId],
     queryFn: () => api.concentrators(apiaryId!),
     enabled: apiaryId != null,
+    refetchInterval: 30_000,
   });
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -127,60 +119,19 @@ export function ConcentratorsPage() {
       ) : data.length === 0 ? (
         <Typography color="text.secondary">Нет концентраторов.</Typography>
       ) : (
-        <Paper>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>ID</TableCell>
-                <TableCell>Название</TableCell>
-                <TableCell>MAC</TableCell>
-                <TableCell>Ingest token</TableCell>
-                <TableCell align="right">Действия</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {data.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>{row.id}</TableCell>
-                  <TableCell>{row.name}</TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
-                      {row.gateway_mac ?? "—"}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                      <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
-                        {row.ingest_token.slice(0, 8)}…
-                      </Typography>
-                      <Tooltip title="Скопировать токен">
-                        <IconButton size="small" onClick={() => copyToken(row.ingest_token)}>
-                          <ContentCopyIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Button
-                      size="small"
-                      component={RouterLink}
-                      to={`/install/gateway?concentrator_id=${row.id}`}
-                      sx={{ mr: 1 }}
-                    >
-                      Прошить
-                    </Button>
-                    <IconButton size="small" onClick={() => openEdit(row)}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={() => setDeleteItem(row)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Paper>
+        <Grid container spacing={2}>
+          {data.map((row) => (
+            <Grid key={row.id} size={{ xs: 12, sm: 6, lg: 4 }}>
+              <ConcentratorCard
+                item={row}
+                apiaryId={apiaryId}
+                onEdit={() => openEdit(row)}
+                onDelete={() => setDeleteItem(row)}
+                onCopyToken={copyToken}
+              />
+            </Grid>
+          ))}
+        </Grid>
       )}
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
@@ -192,7 +143,12 @@ export function ConcentratorsPage() {
               <Typography component="span" sx={{ fontFamily: "monospace", wordBreak: "break-all" }}>
                 {newToken}
               </Typography>
-              <Button size="small" startIcon={<ContentCopyIcon />} sx={{ ml: 1 }} onClick={() => copyToken(newToken)}>
+              <Button
+                size="small"
+                startIcon={<ContentCopyIcon />}
+                sx={{ ml: 1 }}
+                onClick={() => copyToken(newToken)}
+              >
                 Копировать
               </Button>
             </Alert>

@@ -1,17 +1,17 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { getToken } from "./api";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RedirectPreserveSearch } from "./components/RedirectPreserveSearch";
 import { ApiariesPage } from "./pages/ApiariesPage";
 import { ColoniesPage } from "./pages/ColoniesPage";
 import { ColonyDetailPage } from "./pages/ColonyDetailPage";
 import { ColonyDevicesPage } from "./pages/ColonyDevicesPage";
 import { ColonyEditPage } from "./pages/ColonyEditPage";
-import { ConcentratorsPage } from "./pages/ConcentratorsPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { ConcentratorDetailPage } from "./pages/ConcentratorDetailPage";
 import { DevicesPage } from "./pages/DevicesPage";
 import { EdgeInstallPage } from "./pages/EdgeInstallPage";
 import { GatewayInstallPage } from "./pages/GatewayInstallPage";
-import { InstallOverviewPage } from "./pages/InstallOverviewPage";
 import { LoginPage } from "./pages/LoginPage";
 import { TelemetryPage } from "./pages/TelemetryPage";
 import { returnPathFromState } from "./utils/returnUrl";
@@ -36,12 +36,15 @@ export default function App() {
         <Route path="colonies/:colonyId/edit" element={<ColonyEditPage />} />
         <Route path="colonies/:colonyId/devices" element={<ColonyDevicesPage />} />
         <Route path="colonies/:colonyId" element={<ColonyDetailPage />} />
-        <Route path="concentrators" element={<ConcentratorsPage />} />
         <Route path="devices" element={<DevicesPage />} />
+        <Route path="devices/install/gateway" element={<GatewayInstallPage />} />
+        <Route path="devices/install/edge" element={<EdgeInstallPage />} />
+        <Route path="devices/:concentratorId" element={<ConcentratorDetailPage />} />
         <Route path="telemetry" element={<TelemetryPage />} />
-        <Route path="install" element={<InstallOverviewPage />} />
-        <Route path="install/gateway" element={<GatewayInstallPage />} />
-        <Route path="install/edge" element={<EdgeInstallPage />} />
+        <Route path="concentrators" element={<Navigate to="/devices" replace />} />
+        <Route path="install/gateway" element={<RedirectPreserveSearch to="/devices/install/gateway" />} />
+        <Route path="install/edge" element={<RedirectPreserveSearch to="/devices/install/edge" />} />
+        <Route path="install" element={<Navigate to="/devices" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

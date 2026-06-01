@@ -1,7 +1,13 @@
 import HiveIcon from "@mui/icons-material/Hive";
 import MenuIcon from "@mui/icons-material/Menu";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import YardIcon from "@mui/icons-material/Yard";
+import GroupsIcon from "@mui/icons-material/Groups";
+import DevicesIcon from "@mui/icons-material/Devices";
+import ShowChartIcon from "@mui/icons-material/ShowChart";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
@@ -11,14 +17,6 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import UsbIcon from "@mui/icons-material/Usb";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import YardIcon from "@mui/icons-material/Yard";
-import GroupsIcon from "@mui/icons-material/Groups";
-import RouterIcon from "@mui/icons-material/Router";
-import DevicesIcon from "@mui/icons-material/Devices";
-import ShowChartIcon from "@mui/icons-material/ShowChart";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
@@ -30,8 +28,6 @@ const navItems = [
   { to: "/", label: "Главная", icon: <DashboardIcon /> },
   { to: "/apiaries", label: "Пасеки", icon: <YardIcon /> },
   { to: "/colonies", label: "Семьи", icon: <GroupsIcon /> },
-  { to: "/concentrators", label: "Концентраторы", icon: <RouterIcon /> },
-  { to: "/install", label: "Прошивка", icon: <UsbIcon /> },
   { to: "/devices", label: "Устройства", icon: <DevicesIcon /> },
   { to: "/telemetry", label: "Телеметрия", icon: <ShowChartIcon /> },
 ];

@@ -15,12 +15,22 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const res = await fetch(`${base}${path}`, { ...init, headers });
+  const text = await res.text();
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || res.statusText);
+    let message = text || res.statusText;
+    try {
+      const parsed = JSON.parse(text) as { detail?: string | { msg?: string }[] };
+      if (typeof parsed.detail === "string") message = parsed.detail;
+      else if (Array.isArray(parsed.detail)) {
+        message = parsed.detail.map((d) => d.msg ?? JSON.stringify(d)).join("; ");
+      }
+    } catch {
+      /* keep raw text */
+    }
+    throw new Error(message);
   }
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+  if (res.status === 204 || res.status === 205 || !text) return undefined as T;
+  return JSON.parse(text) as T;
 }
 
 export type Apiary = { id: number; name: string };
@@ -51,11 +61,13 @@ export type BeeBreed = { id: number; name: string };
 export type Concentrator = {
   id: number;
   apiary_id: number;
+  apiary_name?: string | null;
   name: string;
   ingest_token: string;
   gateway_mac: string | null;
   last_seen_at: string | null;
   firmware_version: string | null;
+  edge_device_count?: number;
 };
 export type EdgeDevice = {
   id: number;
@@ -64,8 +76,82 @@ export type EdgeDevice = {
   public_id: string;
   label: string | null;
   current_colony_id: number | null;
+  last_seen_at: string | null;
+  recent_unbound_telemetry: TelemetryPoint[];
 };
 export type TelemetryPoint = { ts: string; metric: string; value: unknown };
+
+/** Ответ API иногда приходит объектом вместо массива при одном элементе (клиенты/прокси). */
+function asArray<T>(value: T | T[] | null | undefined): T[] {
+  if (value == null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function dedupeConcentrators(items: Concentrator[]): Concentrator[] {
+  const byId = new Map<number, Concentrator>();
+  for (const item of items) byId.set(item.id, item);
+  return [...byId.values()];
+}
+
+/** Список концентраторов по всем пасекам пользователя. */
+async function fetchAllConcentrators(): Promise<Concentrator[]> {
+  try {
+    const all = await apiFetch<Concentrator[] | Concentrator>("/v1/concentrators");
+    const list = dedupeConcentrators(asArray(all));
+    if (list.length > 0) return enrichConcentratorApiaryNames(list);
+  } catch {
+    /* старый API требует apiary_id — собираем по пасекам */
+  }
+
+  const apiaries = asArray(await apiFetch<Apiary[] | Apiary>("/v1/apiaries"));
+  return fetchConcentratorsForApiaries(apiaries);
+}
+
+async function enrichConcentratorApiaryNames(items: Concentrator[]): Promise<Concentrator[]> {
+  if (items.every((c) => c.apiary_name)) return items;
+  const apiaries = asArray(await apiFetch<Apiary[] | Apiary>("/v1/apiaries"));
+  const names = new Map(apiaries.map((a) => [a.id, a.name]));
+  return items.map((c) => ({
+    ...c,
+    apiary_name: c.apiary_name ?? names.get(c.apiary_id) ?? null,
+  }));
+}
+
+async function fetchConcentratorsForApiaries(apiaries: Apiary[]): Promise<Concentrator[]> {
+  if (apiaries.length === 0) return [];
+  const results = await Promise.allSettled(
+    apiaries.map(async (a) => {
+      const raw = await apiFetch<Concentrator[] | Concentrator>(
+        `/v1/concentrators?apiary_id=${encodeURIComponent(String(a.id))}`,
+      );
+      return asArray(raw).map((c) => ({
+        ...c,
+        apiary_name: c.apiary_name ?? a.name,
+      }));
+    }),
+  );
+  const merged: Concentrator[] = [];
+  for (const r of results) {
+    if (r.status === "fulfilled") merged.push(...r.value);
+  }
+  return dedupeConcentrators(merged);
+}
+
+/** Устройства одного концентратора. */
+async function fetchEdgeDevicesByConcentrator(concentratorId: number): Promise<EdgeDevice[]> {
+  try {
+    const raw = await apiFetch<EdgeDevice[] | EdgeDevice>(
+      `/v1/edge-devices?concentrator_id=${encodeURIComponent(String(concentratorId))}`,
+    );
+    return asArray(raw);
+  } catch {
+    const conc = await apiFetch<Concentrator>(`/v1/concentrators/${concentratorId}`);
+    const raw = await apiFetch<EdgeDevice[] | EdgeDevice>(
+      `/v1/edge-devices?apiary_id=${encodeURIComponent(String(conc.apiary_id))}`,
+    );
+    return asArray(raw).filter((d) => d.concentrator_id === concentratorId);
+  }
+}
 
 export type FirmwareBuild = {
   id: string;
@@ -76,9 +162,19 @@ export type FirmwareBuild = {
   status: string;
   error: string | null;
   manifest_url: string | null;
+  firmware_version: string | null;
+  serial_tag: string | null;
   expires_at: string;
   created_at: string;
   finished_at: string | null;
+};
+
+export type FirmwareRelease = {
+  firmware_version: string;
+  gateway_version: string;
+  edge_version: string;
+  gateway_serial_tag: string;
+  edge_serial_tag: string;
 };
 
 export type TelemetryParams = {
@@ -149,6 +245,7 @@ export const api = {
     apiFetch<Concentrator[]>(
       `/v1/concentrators?apiary_id=${encodeURIComponent(String(apiaryId))}`,
     ),
+  allConcentrators: () => fetchAllConcentrators(),
   concentrator: (id: number) => apiFetch<Concentrator>(`/v1/concentrators/${id}`),
   createConcentrator: (apiaryId: number, name: string) =>
     apiFetch<Concentrator>("/v1/concentrators", {
@@ -168,6 +265,13 @@ export const api = {
   edgeDevices: (apiaryId: number) =>
     apiFetch<EdgeDevice[]>(
       `/v1/edge-devices?apiary_id=${encodeURIComponent(String(apiaryId))}`,
+    ),
+  edgeDevicesByConcentrator: (concentratorId: number) =>
+    fetchEdgeDevicesByConcentrator(concentratorId),
+  edgeDevice: (id: number) => apiFetch<EdgeDevice>(`/v1/edge-devices/${id}`),
+  edgeDeviceTelemetry: (deviceId: number, params?: TelemetryParams) =>
+    apiFetch<TelemetryPoint[]>(
+      `/v1/edge-devices/${encodeURIComponent(String(deviceId))}/telemetry${telemetryQuery(params)}`,
     ),
   createEdgeDevice: (body: {
     concentrator_id: number;
@@ -216,4 +320,5 @@ export const api = {
       body: JSON.stringify(body),
     }),
   firmwareBuild: (id: string) => apiFetch<FirmwareBuild>(`/v1/firmware/builds/${id}`),
+  firmwareReleases: () => apiFetch<FirmwareRelease>("/v1/firmware/releases"),
 };
