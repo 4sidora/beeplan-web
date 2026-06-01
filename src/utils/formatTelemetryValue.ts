@@ -1,4 +1,4 @@
-export function formatTelemetryValue(metric: string, value: unknown): string {
+export function formatTelemetryValue(_metric: string, value: unknown): string {
   if (value != null && typeof value === "object" && !Array.isArray(value)) {
     const v = value as Record<string, unknown>;
     if (typeof v.celsius === "number") return `${v.celsius} °C`;

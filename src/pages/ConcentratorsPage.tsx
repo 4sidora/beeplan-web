@@ -1,6 +1,4 @@
 import AddIcon from "@mui/icons-material/Add";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -19,6 +17,7 @@ import { ConcentratorCard } from "../components/ConcentratorCard";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PageHeader } from "../components/PageHeader";
 import { useSnackbar } from "../components/SnackbarProvider";
+import { BASE_STATION_NAME_PLACEHOLDER } from "../constants/baseStation";
 import { useApiaryParam } from "../hooks/useApiaryParam";
 
 export function ConcentratorsPage() {
@@ -44,19 +43,16 @@ export function ConcentratorsPage() {
   const [editItem, setEditItem] = useState<Concentrator | null>(null);
   const [name, setName] = useState("");
   const [deleteItem, setDeleteItem] = useState<Concentrator | null>(null);
-  const [newToken, setNewToken] = useState<string | null>(null);
 
   const openCreate = () => {
     setEditItem(null);
     setName("");
-    setNewToken(null);
     setDialogOpen(true);
   };
 
   const openEdit = (item: Concentrator) => {
     setEditItem(item);
     setName(item.name);
-    setNewToken(null);
     setDialogOpen(true);
   };
 
@@ -66,13 +62,10 @@ export function ConcentratorsPage() {
       if (apiaryId == null) throw new Error("Выберите пасеку");
       return api.createConcentrator(apiaryId, name);
     },
-    onSuccess: (result) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["concentrators", apiaryId] });
-      if (!editItem) setNewToken(result.ingest_token);
-      else {
-        setDialogOpen(false);
-        showSuccess("Концентратор обновлён");
-      }
+      setDialogOpen(false);
+      showSuccess(editItem ? "Базовая станция обновлена" : "Базовая станция создана");
     },
     onError: (e) => showError(String((e as Error).message)),
   });
@@ -82,23 +75,14 @@ export function ConcentratorsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["concentrators", apiaryId] });
       setDeleteItem(null);
-      showSuccess("Концентратор удалён");
+      showSuccess("Базовая станция удалена");
     },
     onError: (e) => showError(String((e as Error).message)),
   });
 
-  const copyToken = async (token: string) => {
-    try {
-      await navigator.clipboard.writeText(token);
-      showSuccess("Токен скопирован");
-    } catch {
-      showError("Не удалось скопировать");
-    }
-  };
-
   return (
     <>
-      <PageHeader title="Концентраторы">
+      <PageHeader title="Базовые станции">
         <ApiarySelect value={apiaryId} onChange={setApiaryId} />
         <Button
           variant="contained"
@@ -117,7 +101,7 @@ export function ConcentratorsPage() {
           <CircularProgress />
         </Box>
       ) : data.length === 0 ? (
-        <Typography color="text.secondary">Нет концентраторов.</Typography>
+        <Typography color="text.secondary">Нет базовых станций.</Typography>
       ) : (
         <Grid container spacing={2}>
           {data.map((row) => (
@@ -126,8 +110,6 @@ export function ConcentratorsPage() {
                 item={row}
                 apiaryId={apiaryId}
                 onEdit={() => openEdit(row)}
-                onDelete={() => setDeleteItem(row)}
-                onCopyToken={copyToken}
               />
             </Grid>
           ))}
@@ -135,49 +117,48 @@ export function ConcentratorsPage() {
       )}
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>{editItem ? "Редактировать концентратор" : "Новый концентратор"}</DialogTitle>
+        <DialogTitle>
+          {editItem ? "Редактировать базовую станцию" : "Новая базовая станция"}
+        </DialogTitle>
         <DialogContent>
-          {newToken && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Ingest token (сохраните для gateway):{" "}
-              <Typography component="span" sx={{ fontFamily: "monospace", wordBreak: "break-all" }}>
-                {newToken}
-              </Typography>
-              <Button
-                size="small"
-                startIcon={<ContentCopyIcon />}
-                sx={{ ml: 1 }}
-                onClick={() => copyToken(newToken)}
-              >
-                Копировать
-              </Button>
-            </Alert>
-          )}
           <TextField
             autoFocus
             fullWidth
             label="Название"
             margin="normal"
+            placeholder={editItem ? undefined : BASE_STATION_NAME_PLACEHOLDER}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>
-            {newToken ? "Закрыть" : "Отмена"}
-          </Button>
-          {!newToken && (
-            <Button variant="contained" onClick={() => save.mutate()} disabled={!name.trim() || save.isPending}>
-              Сохранить
+          {editItem ? (
+            <Button
+              color="error"
+              onClick={() => {
+                setDialogOpen(false);
+                setDeleteItem(editItem);
+              }}
+              sx={{ mr: "auto" }}
+            >
+              Удалить
             </Button>
-          )}
+          ) : null}
+          <Button onClick={() => setDialogOpen(false)}>Отмена</Button>
+          <Button
+            variant="contained"
+            onClick={() => save.mutate()}
+            disabled={(editItem ? !name.trim() : false) || save.isPending}
+          >
+            Сохранить
+          </Button>
         </DialogActions>
       </Dialog>
 
       <ConfirmDialog
         open={deleteItem != null}
-        title="Удалить концентратор?"
-        message="Будут удалены все устройства этого концентратора."
+        title="Удалить базовую станцию?"
+        message="Будут удалены все устройства этой базовой станции."
         onCancel={() => setDeleteItem(null)}
         onConfirm={() => deleteItem && remove.mutate(deleteItem.id)}
         loading={remove.isPending}

@@ -5,7 +5,7 @@ import { api, type FirmwareBuild } from "../api";
 
 type Props = {
   deviceType: "gateway" | "edge";
-  /** Версия с концентратора (heartbeat), только для gateway */
+  /** Версия с базовой станции (heartbeat), только для gateway */
   installedVersion?: string | null;
   /** Текущая или завершённая сборка */
   build?: FirmwareBuild | null;
@@ -55,9 +55,9 @@ export function FirmwareVersionInfo({
 
   if (deviceType === "gateway") {
     if (installedVersion) {
-      lines.push(`На концентраторе (API): ${installedVersion}`);
+      lines.push(`На базовой станции (API): ${installedVersion}`);
     } else {
-      lines.push("На концентраторе: ещё не зарегистрирована или старая прошивка");
+      lines.push("На базовой станции: ещё не зарегистрирована или старая прошивка");
     }
   }
 
@@ -93,7 +93,7 @@ export function FirmwareVersionInfo({
         </Typography>
       )}
       {!compact && available && (
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
           Если в мониторе порта нет метки {serialTag}, используйте новую сборку, а не старый файл
           прошивки.
         </Typography>

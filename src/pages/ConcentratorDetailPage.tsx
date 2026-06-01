@@ -1,5 +1,7 @@
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import DeleteIcon from "@mui/icons-material/Delete";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -13,13 +15,13 @@ import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
-import { api, type EdgeDevice } from "../api";
+import { api } from "../api";
 import { ConcentratorDetailHeader } from "../components/ConcentratorDetailHeader";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EdgeDeviceCard } from "../components/EdgeDeviceCard";
 import { FormDialog } from "../components/FormDialog";
-import { SerialMonitorDialog } from "../components/SerialMonitorDialog";
 import { useSnackbar } from "../components/SnackbarProvider";
+import { EDGE_DEVICE_NAME_PLACEHOLDER } from "../constants/edgeDevice";
 
 function colonyStatusLabel(
   colonyId: number | null,
@@ -61,15 +63,10 @@ export function ConcentratorDetailPage() {
   const [editNameOpen, setEditNameOpen] = useState(false);
   const [name, setName] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [serialOpen, setSerialOpen] = useState(false);
 
   const [deviceDialogOpen, setDeviceDialogOpen] = useState(false);
-  const [editDevice, setEditDevice] = useState<EdgeDevice | null>(null);
-  const [publicId, setPublicId] = useState("");
-  const [label, setLabel] = useState("");
+  const [deviceName, setDeviceName] = useState("");
   const [colonyId, setColonyId] = useState<number | "">("");
-  const [deleteDevice, setDeleteDevice] = useState<EdgeDevice | null>(null);
-  const [serialDevice, setSerialDevice] = useState<EdgeDevice | null>(null);
 
   const openEditName = () => {
     if (!concentrator.data) return;
@@ -83,7 +80,7 @@ export function ConcentratorDetailPage() {
       qc.invalidateQueries({ queryKey: ["concentrator", concentratorId] });
       qc.invalidateQueries({ queryKey: ["concentrators-all"] });
       setEditNameOpen(false);
-      showSuccess("Концентратор обновлён");
+      showSuccess("Базовая станция обновлена");
     },
     onError: (e) => showError(e instanceof Error ? e.message : "Ошибка"),
   });
@@ -92,45 +89,24 @@ export function ConcentratorDetailPage() {
     mutationFn: () => api.deleteConcentrator(concentratorId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["concentrators-all"] });
-      showSuccess("Концентратор удалён");
+      showSuccess("Базовая станция удалена");
       navigate("/devices");
     },
     onError: (e) => showError(e instanceof Error ? e.message : "Не удалось удалить"),
   });
 
   const openCreateDevice = () => {
-    setEditDevice(null);
-    setPublicId("");
-    setLabel("");
+    setDeviceName("");
     setColonyId("");
-    setDeviceDialogOpen(true);
-  };
-
-  const openEditDevice = (item: EdgeDevice) => {
-    setEditDevice(item);
-    setPublicId(item.public_id);
-    setLabel(item.label ?? "");
-    setColonyId(item.current_colony_id ?? "");
     setDeviceDialogOpen(true);
   };
 
   const saveDevice = useMutation({
     mutationFn: async () => {
       const targetColonyId = colonyId === "" ? null : Number(colonyId);
-      if (editDevice) {
-        await api.updateEdgeDevice(editDevice.id, {
-          public_id: publicId,
-          label: label || null,
-        });
-        if (targetColonyId !== editDevice.current_colony_id) {
-          await api.setDeviceColony(editDevice.id, targetColonyId);
-        }
-        return;
-      }
       return api.createEdgeDevice({
         concentrator_id: concentratorId,
-        public_id: publicId,
-        label: label || null,
+        name: deviceName.trim() || null,
         colony_id: targetColonyId,
       });
     },
@@ -139,34 +115,13 @@ export function ConcentratorDetailPage() {
       qc.invalidateQueries({ queryKey: ["concentrator", concentratorId] });
       qc.invalidateQueries({ queryKey: ["concentrators-all"] });
       setDeviceDialogOpen(false);
-      showSuccess(editDevice ? "Устройство обновлено" : "Устройство создано");
+      showSuccess("Устройство создано");
     },
     onError: (e) => showError(e instanceof Error ? e.message : "Ошибка"),
   });
 
-  const removeDevice = useMutation({
-    mutationFn: (id: number) => api.deleteEdgeDevice(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["edge-devices", "concentrator", concentratorId] });
-      qc.invalidateQueries({ queryKey: ["concentrator", concentratorId] });
-      qc.invalidateQueries({ queryKey: ["concentrators-all"] });
-      setDeleteDevice(null);
-      showSuccess("Устройство удалено");
-    },
-    onError: (e) => showError(e instanceof Error ? e.message : "Не удалось удалить"),
-  });
-
-  const copyToken = async (token: string) => {
-    try {
-      await navigator.clipboard.writeText(token);
-      showSuccess("Токен скопирован");
-    } catch {
-      showError("Не удалось скопировать");
-    }
-  };
-
   if (!Number.isFinite(concentratorId)) {
-    return <Typography color="error">Некорректный ID концентратора</Typography>;
+    return <Typography color="error">Некорректный ID базовой станции</Typography>;
   }
 
   if (concentrator.isLoading) {
@@ -178,7 +133,7 @@ export function ConcentratorDetailPage() {
   }
 
   if (!concentrator.data) {
-    return <Typography color="text.secondary">Концентратор не найден</Typography>;
+    return <Typography color="text.secondary">Базовая станция не найдена</Typography>;
   }
 
   const conc = concentrator.data;
@@ -186,16 +141,10 @@ export function ConcentratorDetailPage() {
   return (
     <>
       <Button component={RouterLink} to="/devices" startIcon={<ArrowBackIcon />} sx={{ mb: 2 }}>
-        К списку концентраторов
+        К списку базовых станций
       </Button>
 
-      <ConcentratorDetailHeader
-        item={conc}
-        onEdit={openEditName}
-        onDelete={() => setDeleteOpen(true)}
-        onCopyToken={copyToken}
-        onOpenSerial={() => setSerialOpen(true)}
-      />
+      <ConcentratorDetailHeader item={conc} onEdit={openEditName} />
 
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
         <Typography variant="h6">Ульевые устройства</Typography>
@@ -214,39 +163,23 @@ export function ConcentratorDetailPage() {
       {edgeDevices.isLoading ? (
         <CircularProgress size={28} />
       ) : (edgeDevices.data ?? []).length === 0 ? (
-        <Typography color="text.secondary">Нет устройств на этом концентраторе.</Typography>
+        <Typography color="text.secondary">Нет устройств на этой базовой станции.</Typography>
       ) : (
         <Grid container spacing={2}>
           {(edgeDevices.data ?? []).map((dev) => (
             <Grid key={dev.id} size={{ xs: 12, sm: 6, lg: 4 }}>
               <EdgeDeviceCard
                 item={dev}
-                apiaryId={apiaryId}
                 colonyLabel={colonyStatusLabel(dev.current_colony_id, colonies.data)}
-                onEdit={() => openEditDevice(dev)}
-                onDelete={() => setDeleteDevice(dev)}
-                onOpenSerial={() => setSerialDevice(dev)}
               />
             </Grid>
           ))}
         </Grid>
       )}
 
-      <SerialMonitorDialog
-        open={serialOpen}
-        onClose={() => setSerialOpen(false)}
-        deviceLabel={`концентратор ${conc.name}`}
-      />
-
-      <SerialMonitorDialog
-        open={serialDevice != null}
-        onClose={() => setSerialDevice(null)}
-        deviceLabel={serialDevice?.label || serialDevice?.public_id || "устройство"}
-      />
-
       <FormDialog
         open={editNameOpen}
-        title="Название концентратора"
+        title="Название базовой станции"
         onClose={() => setEditNameOpen(false)}
         onSubmit={() => saveName.mutate()}
         submitting={saveName.isPending}
@@ -259,31 +192,36 @@ export function ConcentratorDetailPage() {
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
+        <Button
+          color="error"
+          startIcon={<DeleteIcon />}
+          onClick={() => {
+            setEditNameOpen(false);
+            setDeleteOpen(true);
+          }}
+          sx={{ mt: 2 }}
+        >
+          Удалить
+        </Button>
       </FormDialog>
 
       <FormDialog
         open={deviceDialogOpen}
-        title={editDevice ? "Редактировать устройство" : "Новое устройство"}
+        title="Новое устройство"
         onClose={() => setDeviceDialogOpen(false)}
         onSubmit={() => saveDevice.mutate()}
         submitting={saveDevice.isPending}
-        submitDisabled={!publicId.trim()}
+        submitDisabled={false}
         maxWidth="sm"
       >
         <TextField
           autoFocus
           fullWidth
-          label="Public ID"
+          label="Название"
           margin="normal"
-          value={publicId}
-          onChange={(e) => setPublicId(e.target.value)}
-        />
-        <TextField
-          fullWidth
-          label="Метка"
-          margin="normal"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
+          placeholder={EDGE_DEVICE_NAME_PLACEHOLDER}
+          value={deviceName}
+          onChange={(e) => setDeviceName(e.target.value)}
         />
         <FormControl fullWidth margin="normal">
           <InputLabel id="colony-label">Семья</InputLabel>
@@ -308,20 +246,11 @@ export function ConcentratorDetailPage() {
 
       <ConfirmDialog
         open={deleteOpen}
-        title="Удалить концентратор?"
-        message="Концентратор и все привязанные устройства будут удалены."
+        title="Удалить базовую станцию?"
+        message="Базовая станция и все привязанные устройства будут удалены."
         onCancel={() => setDeleteOpen(false)}
         onConfirm={() => removeConc.mutate()}
         loading={removeConc.isPending}
-      />
-
-      <ConfirmDialog
-        open={deleteDevice != null}
-        title="Удалить устройство?"
-        message="Устройство будет удалено из системы."
-        onCancel={() => setDeleteDevice(null)}
-        onConfirm={() => deleteDevice && removeDevice.mutate(deleteDevice.id)}
-        loading={removeDevice.isPending}
       />
     </>
   );

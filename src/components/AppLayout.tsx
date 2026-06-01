@@ -5,6 +5,7 @@ import YardIcon from "@mui/icons-material/Yard";
 import GroupsIcon from "@mui/icons-material/Groups";
 import DevicesIcon from "@mui/icons-material/Devices";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
+import TerminalIcon from "@mui/icons-material/Terminal";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -29,6 +30,7 @@ const navItems = [
   { to: "/apiaries", label: "Пасеки", icon: <YardIcon /> },
   { to: "/colonies", label: "Семьи", icon: <GroupsIcon /> },
   { to: "/devices", label: "Устройства", icon: <DevicesIcon /> },
+  { to: "/devices/monitor", label: "Монитор порта", icon: <TerminalIcon /> },
   { to: "/telemetry", label: "Телеметрия", icon: <ShowChartIcon /> },
 ];
 

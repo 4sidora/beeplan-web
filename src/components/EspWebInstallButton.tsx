@@ -16,7 +16,7 @@ type Props = {
   label?: string;
 };
 
-export function EspWebInstallButton({ manifestUrl, label = "Прошить через USB" }: Props) {
+export function EspWebInstallButton({ manifestUrl, label = "Перепрошить через USB" }: Props) {
   const loaded = useRef(false);
 
   useEffect(() => {

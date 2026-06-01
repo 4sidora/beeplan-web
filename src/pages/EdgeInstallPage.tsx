@@ -24,12 +24,7 @@ import { useSnackbar } from "../components/SnackbarProvider";
 import { FIRMWARE_BOARDS, type FirmwareBoardId } from "../constants/boards";
 import { useApiaryParam } from "../hooks/useApiaryParam";
 
-function randomPublicId(): string {
-  const part = crypto.randomUUID().split("-")[0];
-  return `edge-${part}`;
-}
-
-const steps = ["Концентратор", "Устройство", "Сборка", "Прошивка"];
+const steps = ["Базовая станция", "Устройство", "Сборка", "Прошивка"];
 
 type DeviceMode = "new" | "existing";
 
@@ -37,7 +32,7 @@ function applyExistingDevice(device: EdgeDevice, setters: {
   setConcentratorId: (id: number) => void;
   setEdgeDeviceId: (id: number) => void;
   setPublicId: (id: string) => void;
-  setLabel: (id: string) => void;
+  setDeviceName: (name: string) => void;
   setColonyId: (id: number | "") => void;
   setSelectedExistingId: (id: number) => void;
   setDeviceMode: (mode: DeviceMode) => void;
@@ -45,7 +40,7 @@ function applyExistingDevice(device: EdgeDevice, setters: {
   setters.setConcentratorId(device.concentrator_id);
   setters.setEdgeDeviceId(device.id);
   setters.setPublicId(device.public_id);
-  setters.setLabel(device.label ?? "");
+  setters.setDeviceName(device.name ?? "");
   setters.setColonyId(device.current_colony_id ?? "");
   setters.setSelectedExistingId(device.id);
   setters.setDeviceMode("existing");
@@ -58,8 +53,8 @@ export function EdgeInstallPage() {
   const [activeStep, setActiveStep] = useState(0);
   const [concentratorId, setConcentratorId] = useState<number | "">("");
   const [colonyId, setColonyId] = useState<number | "">("");
-  const [publicId, setPublicId] = useState(randomPublicId);
-  const [label, setLabel] = useState("");
+  const [publicId, setPublicId] = useState("");
+  const [deviceName, setDeviceName] = useState("");
   const [edgeDeviceId, setEdgeDeviceId] = useState<number | null>(null);
   const [deviceMode, setDeviceMode] = useState<DeviceMode>("new");
   const [selectedExistingId, setSelectedExistingId] = useState<number | "">("");
@@ -111,7 +106,7 @@ export function EdgeInstallPage() {
       setConcentratorId: (id) => setConcentratorId(id),
       setEdgeDeviceId,
       setPublicId,
-      setLabel,
+      setDeviceName,
       setColonyId,
       setSelectedExistingId,
       setDeviceMode,
@@ -146,12 +141,13 @@ export function EdgeInstallPage() {
     mutationFn: () =>
       api.createEdgeDevice({
         concentrator_id: Number(concentratorId),
-        public_id: publicId,
-        label: label || `Улей ${publicId}`,
+        name: deviceName.trim() || null,
         colony_id: colonyId === "" ? null : Number(colonyId),
       }),
     onSuccess: (device) => {
       setEdgeDeviceId(device.id);
+      setPublicId(device.public_id);
+      setDeviceName(device.name ?? "");
       showSuccess("Устройство зарегистрировано в API");
       setActiveStep(2);
       startBuild.mutate(device.id);
@@ -166,7 +162,7 @@ export function EdgeInstallPage() {
     if (!device) return;
     setEdgeDeviceId(device.id);
     setPublicId(device.public_id);
-    setLabel(device.label ?? "");
+    setDeviceName(device.name ?? "");
     setActiveStep(2);
     startBuild.mutate(device.id);
   };
@@ -226,7 +222,7 @@ export function EdgeInstallPage() {
             <ApiarySelect value={apiaryId} onChange={setApiaryId} />
             <TextField
               select
-              label="Концентратор"
+              label="Базовая станция"
               value={concentratorId}
               onChange={(e) => {
                 setConcentratorId(Number(e.target.value));
@@ -245,7 +241,7 @@ export function EdgeInstallPage() {
               <Alert severity="warning">
                 Сначала{" "}
                 <RouterLink to={`/devices/install/gateway?concentrator_id=${concentratorId}`}>
-                  прошейте концентратор
+                  прошейте базовую станцию
                 </RouterLink>
                 , чтобы зарегистрировать MAC.
               </Alert>
@@ -300,7 +296,7 @@ export function EdgeInstallPage() {
               <>
                 {existingForConc.length === 0 ? (
                   <Alert severity="warning">
-                    У этого концентратора нет зарегистрированных устройств. Выберите «Новое устройство»
+                    У этой базовой станции нет зарегистрированных устройств. Выберите «Новое устройство»
                     или{" "}
                     <RouterLink to="/devices">создайте устройство</RouterLink> в списке.
                   </Alert>
@@ -315,7 +311,7 @@ export function EdgeInstallPage() {
                       const device = existingForConc.find((d) => d.id === id);
                       if (device) {
                         setPublicId(device.public_id);
-                        setLabel(device.label ?? "");
+                        setDeviceName(device.name ?? "");
                         setColonyId(device.current_colony_id ?? "");
                       }
                     }}
@@ -323,7 +319,7 @@ export function EdgeInstallPage() {
                   >
                     {existingForConc.map((d) => (
                       <MenuItem key={d.id} value={d.id}>
-                        {d.label || d.public_id} · {d.public_id}
+                        {d.name || d.public_id}
                       </MenuItem>
                     ))}
                   </TextField>
@@ -352,12 +348,12 @@ export function EdgeInstallPage() {
             ) : (
               <>
                 <TextField
-                  label="Public ID (DEVICE_PUBLIC_ID)"
-                  value={publicId}
-                  onChange={(e) => setPublicId(e.target.value)}
+                  label="Название"
+                  value={deviceName}
+                  onChange={(e) => setDeviceName(e.target.value)}
+                  placeholder="Мультидатчик ad6304a0 (если пусто — подставится автоматически)"
                   fullWidth
                 />
-                <TextField label="Метка" value={label} onChange={(e) => setLabel(e.target.value)} fullWidth />
                 <TextField
                   select
                   label="Семья (опционально)"
@@ -389,7 +385,12 @@ export function EdgeInstallPage() {
 
         {activeStep === 2 && edgeDeviceId != null && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Typography>Устройство #{edgeDeviceId} · {publicId}</Typography>
+            <Typography>
+              {deviceName || `Устройство #${edgeDeviceId}`} ·{" "}
+              <Typography component="span" sx={{ fontFamily: "monospace", fontSize: 14 }}>
+                {publicId}
+              </Typography>
+            </Typography>
             <Button
               variant="contained"
               disabled={startBuild.isPending}

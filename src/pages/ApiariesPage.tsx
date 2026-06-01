@@ -134,7 +134,7 @@ export function ApiariesPage() {
       <ConfirmDialog
         open={deleteItem != null}
         title="Удалить пасеку?"
-        message="Будут удалены все семьи, концентраторы, устройства и телеметрия этой пасеки."
+        message="Будут удалены все семьи, базовые станции, устройства и телеметрия этой пасеки."
         onCancel={() => setDeleteItem(null)}
         onConfirm={() => deleteItem && remove.mutate(deleteItem.id)}
         loading={remove.isPending}

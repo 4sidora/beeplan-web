@@ -74,10 +74,11 @@ export type EdgeDevice = {
   concentrator_id: number;
   concentrator_name: string | null;
   public_id: string;
-  label: string | null;
+  name: string | null;
   current_colony_id: number | null;
   last_seen_at: string | null;
-  recent_unbound_telemetry: TelemetryPoint[];
+  firmware_version: string | null;
+  recent_telemetry: TelemetryPoint[];
 };
 export type TelemetryPoint = { ts: string; metric: string; value: unknown };
 
@@ -93,7 +94,7 @@ function dedupeConcentrators(items: Concentrator[]): Concentrator[] {
   return [...byId.values()];
 }
 
-/** Список концентраторов по всем пасекам пользователя. */
+/** Список базовых станций по всем пасекам пользователя. */
 async function fetchAllConcentrators(): Promise<Concentrator[]> {
   try {
     const all = await apiFetch<Concentrator[] | Concentrator>("/v1/concentrators");
@@ -137,7 +138,7 @@ async function fetchConcentratorsForApiaries(apiaries: Apiary[]): Promise<Concen
   return dedupeConcentrators(merged);
 }
 
-/** Устройства одного концентратора. */
+/** Устройства одной базовой станции. */
 async function fetchEdgeDevicesByConcentrator(concentratorId: number): Promise<EdgeDevice[]> {
   try {
     const raw = await apiFetch<EdgeDevice[] | EdgeDevice>(
@@ -247,11 +248,14 @@ export const api = {
     ),
   allConcentrators: () => fetchAllConcentrators(),
   concentrator: (id: number) => apiFetch<Concentrator>(`/v1/concentrators/${id}`),
-  createConcentrator: (apiaryId: number, name: string) =>
+  createConcentrator: (apiaryId: number, name?: string | null) =>
     apiFetch<Concentrator>("/v1/concentrators", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ apiary_id: apiaryId, name }),
+      body: JSON.stringify({
+        apiary_id: apiaryId,
+        name: name?.trim() || null,
+      }),
     }),
   updateConcentrator: (id: number, name: string) =>
     apiFetch<Concentrator>(`/v1/concentrators/${id}`, {
@@ -275,8 +279,7 @@ export const api = {
     ),
   createEdgeDevice: (body: {
     concentrator_id: number;
-    public_id: string;
-    label?: string | null;
+    name?: string | null;
     colony_id?: number | null;
   }) =>
     apiFetch<EdgeDevice>("/v1/edge-devices", {
@@ -284,7 +287,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
-  updateEdgeDevice: (id: number, body: { public_id?: string; label?: string | null }) =>
+  updateEdgeDevice: (id: number, body: { name?: string | null }) =>
     apiFetch<EdgeDevice>(`/v1/edge-devices/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

@@ -22,7 +22,7 @@ export function InstallOverviewPage() {
       />
       <Paper sx={{ p: 3, maxWidth: 720 }}>
         <Typography sx={{ mb: 2 }}>
-          Подключите ESP32 по USB и прошейте концентратор и ульевое устройство прямо из браузера.
+          Подключите ESP32 по USB и прошейте базовую станцию и ульевое устройство прямо из браузера.
           Конфигурация (Wi‑Fi, токены, MAC) запишется в прошивку автоматически при сборке.
         </Typography>
         {!serialOk && (
@@ -31,14 +31,13 @@ export function InstallOverviewPage() {
           </Alert>
         )}
         <Alert severity="info" sx={{ mb: 2 }}>
-          Порядок для новых устройств: сначала <strong>концентратор</strong>, затем{" "}
-          <strong>улей</strong> (edge). Уже зарегистрированные — прошивайте из списков{" "}
-          <RouterLink to="/concentrators">концентраторов</RouterLink> или{" "}
+          Порядок для новых устройств: сначала <strong>базовая станция</strong>, затем{" "}
+          <strong>улей</strong> (edge). Уже зарегистрированные — прошивайте из списка{" "}
           <RouterLink to="/devices">устройств</RouterLink>.
         </Alert>
         <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
           <Button variant="contained" component={RouterLink} to="/install/gateway">
-            1. Прошить концентратор
+            1. Прошить базовую станцию
           </Button>
           <Button variant="outlined" component={RouterLink} to="/install/edge">
             2. Прошить улей

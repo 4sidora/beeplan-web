@@ -1,6 +1,4 @@
 import AddIcon from "@mui/icons-material/Add";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import Alert from "@mui/material/Alert";
@@ -24,8 +22,6 @@ import TableCell from "@mui/material/TableCell";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
-import Tooltip from "@mui/material/Tooltip";
-import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
@@ -33,6 +29,7 @@ import { api, type Concentrator } from "../api";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PageHeader } from "../components/PageHeader";
 import { useSnackbar } from "../components/SnackbarProvider";
+import { BASE_STATION_NAME_PLACEHOLDER } from "../constants/baseStation";
 import { formatLastSeen } from "../utils/formatLastSeen";
 
 function onlineChip(lastSeen: string | null) {
@@ -60,13 +57,11 @@ export function DevicesPage() {
   const [name, setName] = useState("");
   const [apiaryId, setApiaryId] = useState<number | "">("");
   const [deleteItem, setDeleteItem] = useState<Concentrator | null>(null);
-  const [newToken, setNewToken] = useState<string | null>(null);
 
   const openCreate = () => {
     setEditItem(null);
     setName("");
     setApiaryId(apiaries.data?.[0]?.id ?? "");
-    setNewToken(null);
     setDialogOpen(true);
   };
 
@@ -74,7 +69,6 @@ export function DevicesPage() {
     setEditItem(item);
     setName(item.name);
     setApiaryId(item.apiary_id);
-    setNewToken(null);
     setDialogOpen(true);
   };
 
@@ -84,13 +78,10 @@ export function DevicesPage() {
       if (apiaryId === "") throw new Error("Выберите пасеку");
       return api.createConcentrator(Number(apiaryId), name);
     },
-    onSuccess: (result) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["concentrators-all"] });
-      if (!editItem) setNewToken(result.ingest_token);
-      else {
-        setDialogOpen(false);
-        showSuccess("Концентратор обновлён");
-      }
+      setDialogOpen(false);
+      showSuccess(editItem ? "Базовая станция обновлена" : "Базовая станция создана");
     },
     onError: (e) => showError(e instanceof Error ? e.message : "Ошибка сохранения"),
   });
@@ -100,31 +91,22 @@ export function DevicesPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["concentrators-all"] });
       setDeleteItem(null);
-      showSuccess("Концентратор удалён");
+      showSuccess("Базовая станция удалена");
     },
     onError: (e) => showError(e instanceof Error ? e.message : "Не удалось удалить"),
   });
-
-  const copyToken = async (token: string) => {
-    try {
-      await navigator.clipboard.writeText(token);
-      showSuccess("Токен скопирован");
-    } catch {
-      showError("Не удалось скопировать");
-    }
-  };
 
   return (
     <>
       <PageHeader title="Устройства">
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          Добавить концентратор
+          Добавить базовую станцию
         </Button>
       </PageHeader>
 
       {concentrators.isError ? (
         <Alert severity="error" sx={{ mb: 2 }}>
-          Не удалось загрузить концентраторы:{" "}
+          Не удалось загрузить базовые станции:{" "}
           {concentrators.error instanceof Error ? concentrators.error.message : "ошибка сети"}
         </Alert>
       ) : null}
@@ -134,18 +116,17 @@ export function DevicesPage() {
           <CircularProgress />
         </Box>
       ) : (concentrators.data ?? []).length === 0 ? (
-        <Alert severity="info">Добавьте первый концентратор.</Alert>
+        <Alert severity="info">Добавьте первую базовую станцию.</Alert>
       ) : (
         <Paper>
           <Table>
             <TableHead>
               <TableRow>
                 <TableCell>Название</TableCell>
-                <TableCell>Пасека</TableCell>
                 <TableCell>Статус</TableCell>
                 <TableCell>Последний контакт</TableCell>
-                <TableCell>MAC</TableCell>
                 <TableCell align="right">Устройств</TableCell>
+                <TableCell>Пасека</TableCell>
                 <TableCell align="right">Действия</TableCell>
               </TableRow>
             </TableHead>
@@ -162,29 +143,13 @@ export function DevicesPage() {
                       {row.name}
                     </Button>
                   </TableCell>
-                  <TableCell>{row.apiary_name ?? `#${row.apiary_id}`}</TableCell>
                   <TableCell>{onlineChip(row.last_seen_at)}</TableCell>
                   <TableCell>{formatLastSeen(row.last_seen_at)}</TableCell>
-                  <TableCell sx={{ fontFamily: "monospace", fontSize: 12 }}>
-                    {row.gateway_mac ?? "—"}
-                  </TableCell>
                   <TableCell align="right">{row.edge_device_count ?? 0}</TableCell>
+                  <TableCell>{row.apiary_name ?? `#${row.apiary_id}`}</TableCell>
                   <TableCell align="right">
-                    <Tooltip title="Скопировать токен">
-                      <IconButton size="small" onClick={() => copyToken(row.ingest_token)}>
-                        <ContentCopyIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
                     <IconButton size="small" onClick={() => openEdit(row)} aria-label="Редактировать">
                       <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => setDeleteItem(row)}
-                      aria-label="Удалить"
-                    >
-                      <DeleteIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
                 </TableRow>
@@ -195,24 +160,10 @@ export function DevicesPage() {
       )}
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>{editItem ? "Редактировать концентратор" : "Новый концентратор"}</DialogTitle>
+        <DialogTitle>
+          {editItem ? "Редактировать базовую станцию" : "Новая базовая станция"}
+        </DialogTitle>
         <DialogContent>
-          {newToken && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Ingest token (сохраните для gateway):{" "}
-              <Typography component="span" sx={{ fontFamily: "monospace", wordBreak: "break-all" }}>
-                {newToken}
-              </Typography>
-              <Button
-                size="small"
-                startIcon={<ContentCopyIcon />}
-                sx={{ ml: 1 }}
-                onClick={() => copyToken(newToken)}
-              >
-                Копировать
-              </Button>
-            </Alert>
-          )}
           {!editItem && (
             <FormControl fullWidth margin="normal">
               <InputLabel id="apiary-pick">Пасека</InputLabel>
@@ -235,28 +186,41 @@ export function DevicesPage() {
             fullWidth
             label="Название"
             margin="normal"
+            placeholder={editItem ? undefined : BASE_STATION_NAME_PLACEHOLDER}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>{newToken ? "Закрыть" : "Отмена"}</Button>
-          {!newToken && (
+          {editItem ? (
             <Button
-              variant="contained"
-              onClick={() => save.mutate()}
-              disabled={!name.trim() || (!editItem && apiaryId === "") || save.isPending}
+              color="error"
+              onClick={() => {
+                setDialogOpen(false);
+                setDeleteItem(editItem);
+              }}
+              sx={{ mr: "auto" }}
             >
-              Сохранить
+              Удалить
             </Button>
-          )}
+          ) : null}
+          <Button onClick={() => setDialogOpen(false)}>Отмена</Button>
+          <Button
+            variant="contained"
+            onClick={() => save.mutate()}
+            disabled={
+              (editItem ? !name.trim() : apiaryId === "") || save.isPending
+            }
+          >
+            Сохранить
+          </Button>
         </DialogActions>
       </Dialog>
 
       <ConfirmDialog
         open={deleteItem != null}
-        title="Удалить концентратор?"
-        message="Концентратор и все привязанные устройства будут удалены."
+        title="Удалить базовую станцию?"
+        message="Базовая станция и все привязанные устройства будут удалены."
         onCancel={() => setDeleteItem(null)}
         onConfirm={() => deleteItem && remove.mutate(deleteItem.id)}
         loading={remove.isPending}

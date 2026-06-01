@@ -1,5 +1,4 @@
 import AddIcon from "@mui/icons-material/Add";
-import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -20,9 +19,10 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { api, type EdgeDevice } from "../api";
-import { ConfirmDialog } from "./ConfirmDialog";
+import { Link as RouterLink } from "react-router-dom";
+import { api } from "../api";
 import { FormDialog } from "./FormDialog";
+import { EDGE_DEVICE_NAME_PLACEHOLDER } from "../constants/edgeDevice";
 import { EDGE_DEVICE_METRICS_LABEL } from "../utils/colonyCatalog";
 
 type Props = {
@@ -47,45 +47,23 @@ export function ColonyDevicesSection({ colonyId, apiaryId, showTitle = true }: P
   const devices = allDevices.filter((d) => d.current_colony_id === colonyId);
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editItem, setEditItem] = useState<EdgeDevice | null>(null);
-  const [publicId, setPublicId] = useState("");
-  const [label, setLabel] = useState("");
+  const [deviceName, setDeviceName] = useState("");
   const [concentratorId, setConcentratorId] = useState<number | "">("");
-  const [deleteItem, setDeleteItem] = useState<EdgeDevice | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const openCreate = () => {
-    setEditItem(null);
-    setPublicId("");
-    setLabel("");
+    setDeviceName("");
     setConcentratorId(concentrators.data?.[0]?.id ?? "");
-    setErrorMsg(null);
-    setDialogOpen(true);
-  };
-
-  const openEdit = (item: EdgeDevice) => {
-    setEditItem(item);
-    setPublicId(item.public_id);
-    setLabel(item.label ?? "");
-    setConcentratorId(item.concentrator_id);
     setErrorMsg(null);
     setDialogOpen(true);
   };
 
   const save = useMutation({
     mutationFn: async () => {
-      if (editItem) {
-        await api.updateEdgeDevice(editItem.id, {
-          public_id: publicId,
-          label: label || null,
-        });
-        return;
-      }
-      if (concentratorId === "") throw new Error("Выберите концентратор");
+      if (concentratorId === "") throw new Error("Выберите базовую станцию");
       return api.createEdgeDevice({
         concentrator_id: Number(concentratorId),
-        public_id: publicId,
-        label: label || null,
+        name: deviceName.trim() || null,
         colony_id: colonyId,
       });
     },
@@ -93,15 +71,6 @@ export function ColonyDevicesSection({ colonyId, apiaryId, showTitle = true }: P
       qc.invalidateQueries({ queryKey: ["edge-devices", apiaryId] });
       setDialogOpen(false);
       setErrorMsg(null);
-    },
-    onError: (e) => setErrorMsg(String((e as Error).message)),
-  });
-
-  const remove = useMutation({
-    mutationFn: (id: number) => api.deleteEdgeDevice(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["edge-devices", apiaryId] });
-      setDeleteItem(null);
     },
     onError: (e) => setErrorMsg(String((e as Error).message)),
   });
@@ -144,7 +113,7 @@ export function ColonyDevicesSection({ colonyId, apiaryId, showTitle = true }: P
       )}
 
       {!concentrators.data?.length ? (
-        <Typography color="text.secondary">Сначала создайте концентратор для этой пасеки.</Typography>
+        <Typography color="text.secondary">Сначала создайте базовую станцию для этой пасеки.</Typography>
       ) : isLoading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
           <CircularProgress size={28} />
@@ -156,9 +125,9 @@ export function ColonyDevicesSection({ colonyId, apiaryId, showTitle = true }: P
           <Table size="small">
             <TableHead>
               <TableRow>
+                <TableCell>Название</TableCell>
                 <TableCell>Public ID</TableCell>
-                <TableCell>Метка</TableCell>
-                <TableCell>Концентратор</TableCell>
+                <TableCell>Базовая станция</TableCell>
                 <TableCell>Данные</TableCell>
                 <TableCell align="right">Действия</TableCell>
               </TableRow>
@@ -166,23 +135,20 @@ export function ColonyDevicesSection({ colonyId, apiaryId, showTitle = true }: P
             <TableBody>
               {devices.map((row) => (
                 <TableRow key={row.id}>
+                  <TableCell>{row.name ?? row.public_id}</TableCell>
                   <TableCell sx={{ fontFamily: "monospace", fontSize: 12 }}>{row.public_id}</TableCell>
-                  <TableCell>{row.label ?? "—"}</TableCell>
                   <TableCell>{row.concentrator_name ?? `ID ${row.concentrator_id}`}</TableCell>
                   <TableCell>
                     <Chip size="small" label={EDGE_DEVICE_METRICS_LABEL} variant="outlined" />
                   </TableCell>
                   <TableCell align="right">
-                    <IconButton size="small" onClick={() => openEdit(row)} title="Редактировать">
-                      <EditIcon fontSize="small" />
-                    </IconButton>
                     <IconButton
                       size="small"
-                      color="error"
-                      onClick={() => setDeleteItem(row)}
-                      title="Удалить"
+                      component={RouterLink}
+                      to={`/devices/edge/${row.id}/edit`}
+                      title="Редактировать"
                     >
-                      <DeleteIcon fontSize="small" />
+                      <EditIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
                 </TableRow>
@@ -194,55 +160,38 @@ export function ColonyDevicesSection({ colonyId, apiaryId, showTitle = true }: P
 
       <FormDialog
         open={dialogOpen}
-        title={editItem ? "Редактировать устройство" : "Новое устройство"}
+        title="Новое устройство"
         onClose={() => setDialogOpen(false)}
         onSubmit={() => save.mutate()}
         submitting={save.isPending}
-        submitDisabled={!publicId.trim()}
+        submitDisabled={concentratorId === ""}
         maxWidth="sm"
       >
-        {!editItem && (
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="conc-label">Концентратор</InputLabel>
-            <Select
-              labelId="conc-label"
-              label="Концентратор"
-              value={concentratorId}
-              onChange={(e) => setConcentratorId(Number(e.target.value))}
-            >
-              {(concentrators.data ?? []).map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  {c.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
+        <FormControl fullWidth margin="normal">
+          <InputLabel id="conc-label">Базовая станция</InputLabel>
+          <Select
+            labelId="conc-label"
+            label="Базовая станция"
+            value={concentratorId}
+            onChange={(e) => setConcentratorId(Number(e.target.value))}
+          >
+            {(concentrators.data ?? []).map((c) => (
+              <MenuItem key={c.id} value={c.id}>
+                {c.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <TextField
-          autoFocus={!!editItem}
+          autoFocus
           fullWidth
-          label="Public ID"
+          label="Название"
           margin="normal"
-          value={publicId}
-          onChange={(e) => setPublicId(e.target.value)}
-        />
-        <TextField
-          fullWidth
-          label="Метка"
-          margin="normal"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
+          placeholder={EDGE_DEVICE_NAME_PLACEHOLDER}
+          value={deviceName}
+          onChange={(e) => setDeviceName(e.target.value)}
         />
       </FormDialog>
-
-      <ConfirmDialog
-        open={deleteItem != null}
-        title="Удалить устройство?"
-        message="Устройство будет удалено из системы."
-        onCancel={() => setDeleteItem(null)}
-        onConfirm={() => deleteItem && remove.mutate(deleteItem.id)}
-        loading={remove.isPending}
-      />
     </Box>
   );
 }

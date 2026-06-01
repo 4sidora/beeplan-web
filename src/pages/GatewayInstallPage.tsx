@@ -46,7 +46,7 @@ function isBadDeviceApiUrl(url: string): boolean {
 
 const deviceApiUrl = defaultDeviceApiUrl();
 
-const steps = ["Концентратор", "Wi‑Fi и API", "Сборка", "Прошивка", "Подключение"];
+const steps = ["Базовая станция", "Wi‑Fi и API", "Сборка", "Прошивка", "Подключение"];
 
 export function GatewayInstallPage() {
   const { showError } = useSnackbar();
@@ -144,7 +144,7 @@ export function GatewayInstallPage() {
   return (
     <Box>
       <PageHeader
-        title="Прошивка концентратора"
+        title="Прошивка базовой станции"
         actions={
           <Button component={RouterLink} to="/devices" size="small">
             К устройствам
@@ -179,7 +179,7 @@ export function GatewayInstallPage() {
             <ApiarySelect value={apiaryId} onChange={setApiaryId} />
             <TextField
               select
-              label="Концентратор"
+              label="Базовая станция"
               value={concentratorId}
               onChange={(e) => setConcentratorId(Number(e.target.value))}
               fullWidth
@@ -193,7 +193,7 @@ export function GatewayInstallPage() {
             </TextField>
             {selectedConc?.gateway_mac && (
               <Alert severity="info">
-                Перепрошивка существующего концентратора. MAC уже зарегистрирован:{" "}
+                Перепрошивка существующей базовой станции. MAC уже зарегистрирован:{" "}
                 {selectedConc.gateway_mac}. После прошивки heartbeat обновит статус.
               </Alert>
             )}
@@ -294,11 +294,11 @@ export function GatewayInstallPage() {
               <>
                 {concentratorPoll.data?.gateway_mac ? (
                   <Alert severity="success">
-                    Концентратор зарегистрирован: MAC {concentratorPoll.data.gateway_mac}
+                    Базовая станция зарегистрирована: MAC {concentratorPoll.data.gateway_mac}
                   </Alert>
                 ) : (
                   <Alert severity="info">
-                    Ожидание heartbeat от концентратора после прошивки и подключения к Wi‑Fi…
+                    Ожидание heartbeat от базовой станции после прошивки и подключения к Wi‑Fi…
                   </Alert>
                 )}
                 <Button
