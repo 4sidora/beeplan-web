@@ -175,7 +175,7 @@ export function EdgeDeviceEditPage() {
       <ConfirmDialog
         open={deleteOpen}
         title="Удалить устройство?"
-        message="Устройство будет удалено из системы."
+        message="Устройство будет скрыто из списков. Данные в системе сохранятся."
         onCancel={() => setDeleteOpen(false)}
         onConfirm={() => remove.mutate()}
         loading={remove.isPending}

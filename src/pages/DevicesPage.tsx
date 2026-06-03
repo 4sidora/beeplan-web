@@ -11,6 +11,7 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import FormControl from "@mui/material/FormControl";
+import InputAdornment from "@mui/material/InputAdornment";
 import IconButton from "@mui/material/IconButton";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
@@ -57,12 +58,22 @@ export function DevicesPage() {
   const [name, setName] = useState("");
   const [apiaryId, setApiaryId] = useState<number | "">("");
   const [deleteItem, setDeleteItem] = useState<Concentrator | null>(null);
+  const [nameLoading, setNameLoading] = useState(false);
 
-  const openCreate = () => {
+  const openCreate = async () => {
     setEditItem(null);
-    setName("");
     setApiaryId(apiaries.data?.[0]?.id ?? "");
     setDialogOpen(true);
+    setNameLoading(true);
+    setName("");
+    try {
+      const suggested = await api.suggestedBaseStationName();
+      setName(suggested.name);
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Не удалось сгенерировать название");
+    } finally {
+      setNameLoading(false);
+    }
   };
 
   const openEdit = (item: Concentrator) => {
@@ -164,6 +175,29 @@ export function DevicesPage() {
           {editItem ? "Редактировать базовую станцию" : "Новая базовая станция"}
         </DialogTitle>
         <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Название"
+            margin="normal"
+            placeholder={editItem ? undefined : BASE_STATION_NAME_PLACEHOLDER}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={!editItem && nameLoading}
+            slotProps={
+              !editItem && nameLoading
+                ? {
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <CircularProgress size={20} />
+                        </InputAdornment>
+                      ),
+                    },
+                  }
+                : undefined
+            }
+          />
           {!editItem && (
             <FormControl fullWidth margin="normal">
               <InputLabel id="apiary-pick">Пасека</InputLabel>
@@ -181,15 +215,6 @@ export function DevicesPage() {
               </Select>
             </FormControl>
           )}
-          <TextField
-            autoFocus
-            fullWidth
-            label="Название"
-            margin="normal"
-            placeholder={editItem ? undefined : BASE_STATION_NAME_PLACEHOLDER}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
         </DialogContent>
         <DialogActions>
           {editItem ? (
@@ -209,7 +234,8 @@ export function DevicesPage() {
             variant="contained"
             onClick={() => save.mutate()}
             disabled={
-              (editItem ? !name.trim() : apiaryId === "") || save.isPending
+              (editItem ? !name.trim() : apiaryId === "" || nameLoading || !name.trim()) ||
+              save.isPending
             }
           >
             Сохранить
@@ -220,7 +246,7 @@ export function DevicesPage() {
       <ConfirmDialog
         open={deleteItem != null}
         title="Удалить базовую станцию?"
-        message="Базовая станция и все привязанные устройства будут удалены."
+        message="Базовая станция и все её устройства будут скрыты из списков. Данные в системе сохранятся."
         onCancel={() => setDeleteItem(null)}
         onConfirm={() => deleteItem && remove.mutate(deleteItem.id)}
         loading={remove.isPending}

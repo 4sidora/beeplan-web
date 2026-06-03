@@ -35,14 +35,9 @@ export function InstallOverviewPage() {
           <strong>улей</strong> (edge). Уже зарегистрированные — прошивайте из списка{" "}
           <RouterLink to="/devices">устройств</RouterLink>.
         </Alert>
-        <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-          <Button variant="contained" component={RouterLink} to="/install/gateway">
-            1. Прошить базовую станцию
-          </Button>
-          <Button variant="outlined" component={RouterLink} to="/install/edge">
-            2. Прошить улей
-          </Button>
-        </Box>
+        <Button variant="contained" component={RouterLink} to="/devices">
+          К списку устройств
+        </Button>
       </Paper>
     </Box>
   );

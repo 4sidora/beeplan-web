@@ -147,7 +147,7 @@ export function ConcentratorDetailPage() {
       <ConcentratorDetailHeader item={conc} onEdit={openEditName} />
 
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
-        <Typography variant="h6">Ульевые устройства</Typography>
+        <Typography variant="h6">Подключенные устройства</Typography>
         <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={openCreateDevice}>
           Добавить
         </Button>
@@ -247,7 +247,7 @@ export function ConcentratorDetailPage() {
       <ConfirmDialog
         open={deleteOpen}
         title="Удалить базовую станцию?"
-        message="Базовая станция и все привязанные устройства будут удалены."
+        message="Базовая станция и все её устройства будут скрыты из списков. Данные в системе сохранятся."
         onCancel={() => setDeleteOpen(false)}
         onConfirm={() => removeConc.mutate()}
         loading={removeConc.isPending}

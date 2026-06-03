@@ -1,5 +1,7 @@
 import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import { Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, type FirmwareBuild } from "../api";
 
@@ -10,13 +12,28 @@ type Props = {
   /** Текущая или завершённая сборка */
   build?: FirmwareBuild | null;
   compact?: boolean;
+  /** Только заголовок и две строки (мастер прошивки, шаг «Устройство») */
+  installOverview?: boolean;
+  /** Текст под версиями в том же синем блоке */
+  description?: string;
 };
+
+function firmwareSerialTag(
+  version: string | null | undefined,
+  deviceType: "gateway" | "edge",
+): string | null {
+  if (!version) return null;
+  if (version.includes("beeplan-")) return version;
+  return deviceType === "gateway" ? `beeplan-Gateway-${version}` : `beeplan-Edge-${version}`;
+}
 
 export function FirmwareVersionInfo({
   deviceType,
   installedVersion,
   build,
   compact = false,
+  installOverview = false,
+  description,
 }: Props) {
   const releases = useQuery({
     queryKey: ["firmware-releases"],
@@ -44,24 +61,42 @@ export function FirmwareVersionInfo({
     );
   }
 
-  const lines: string[] = [];
-  if (available) {
-    const serverVersion =
-      deviceType === "gateway" ? available.gateway_version : available.edge_version;
-    lines.push(
-      `Доступная на сервере: ${serverVersion} · ${serialTag ?? "—"}`,
-    );
+  const overviewRows: { label: string; value: string }[] = [];
+  if (installOverview && available) {
+    overviewRows.push({
+      label: "Доступная на сервере:",
+      value: serialTag ?? "—",
+    });
+    if (deviceType === "gateway") {
+      overviewRows.push({
+        label: "На базовой станции (API):",
+        value: firmwareSerialTag(installedVersion, "gateway") ?? "—",
+      });
+    } else {
+      overviewRows.push({
+        label: "На устройстве (API):",
+        value: firmwareSerialTag(installedVersion, "edge") ?? "—",
+      });
+    }
   }
 
-  if (deviceType === "gateway") {
+  const lines: string[] = [];
+  if (available && !installOverview) {
+    const serverVersion =
+      deviceType === "gateway" ? available.gateway_version : available.edge_version;
+    lines.push(`Доступная на сервере: ${serverVersion} · ${serialTag ?? "—"}`);
+  }
+
+  if (deviceType === "gateway" && !installOverview) {
+    const installedTag = firmwareSerialTag(installedVersion, "gateway");
     if (installedVersion) {
-      lines.push(`На базовой станции (API): ${installedVersion}`);
+      lines.push(`На базовой станции (API): ${installedTag ?? installedVersion}`);
     } else {
       lines.push("На базовой станции: ещё не зарегистрирована или старая прошивка");
     }
   }
 
-  if (build?.firmware_version) {
+  if (!installOverview && build?.firmware_version) {
     const built =
       build.status === "ready"
         ? `Собрана для прошивки: ${build.firmware_version}`
@@ -71,6 +106,7 @@ export function FirmwareVersionInfo({
   }
 
   const mismatch =
+    !installOverview &&
     build?.status === "ready" &&
     build.firmware_version &&
     available &&
@@ -88,18 +124,52 @@ export function FirmwareVersionInfo({
       ))}
       {mismatch && (
         <Typography variant="body2" color="warning.main" sx={{ mt: 0.5 }}>
-          После прошивки в Serial должно появиться «{serialTag}». Сейчас на устройстве другая
-          версия — прошейте заново из этой сборки.
-        </Typography>
-      )}
-      {!compact && available && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-          Если в мониторе порта нет метки {serialTag}, используйте новую сборку, а не старый файл
-          прошивки.
+          На устройстве другая версия — прошейте заново из новой сборки.
         </Typography>
       )}
     </>
   );
+
+  if (installOverview) {
+    return (
+      <Alert severity="info" sx={{ mb: 2, "& .MuiAlert-message": { width: "100%" } }}>
+        <Typography
+          component="div"
+          variant="subtitle1"
+          sx={{ fontWeight: 700, lineHeight: 1.3, mb: 1 }}
+        >
+          Версия прошивки
+        </Typography>
+        <Box
+          component="dl"
+          sx={{
+            m: 0,
+            display: "grid",
+            gridTemplateColumns: "max-content 1fr",
+            columnGap: 2,
+            rowGap: 0.5,
+            alignItems: "baseline",
+          }}
+        >
+          {overviewRows.map((row) => (
+            <Fragment key={row.label}>
+              <Typography component="dt" variant="body2" sx={{ m: 0, whiteSpace: "nowrap" }}>
+                {row.label}
+              </Typography>
+              <Typography component="dd" variant="body2" sx={{ m: 0 }}>
+                {row.value}
+              </Typography>
+            </Fragment>
+          ))}
+        </Box>
+        {description ? (
+          <Typography variant="body2" sx={{ mt: 1.5, lineHeight: 1.65 }}>
+            {description}
+          </Typography>
+        ) : null}
+      </Alert>
+    );
+  }
 
   if (compact) {
     return <Alert severity="info" sx={{ mb: 2 }}>{content}</Alert>;
@@ -107,7 +177,7 @@ export function FirmwareVersionInfo({
 
   return (
     <Alert severity="info" sx={{ mb: 2, "& .MuiAlert-message": { width: "100%" } }}>
-      <Typography variant="subtitle2" gutterBottom>
+      <Typography variant="subtitle2" fontWeight={700} gutterBottom>
         Версия прошивки
       </Typography>
       {content}

@@ -168,6 +168,10 @@ export type FirmwareBuild = {
   expires_at: string;
   created_at: string;
   finished_at: string | null;
+  phase?: string | null;
+  log_tail?: string[] | null;
+  progress_pct?: number | null;
+  updated_at?: string | null;
 };
 
 export type FirmwareRelease = {
@@ -223,6 +227,8 @@ export const api = {
     apiFetch<void>(`/v1/apiaries/${id}`, { method: "DELETE" }),
 
   suggestedColonyName: () => apiFetch<{ name: string }>("/v1/colonies/suggested-name"),
+  suggestedBaseStationName: () =>
+    apiFetch<{ name: string }>("/v1/concentrators/suggested-name"),
 
   colonies: (apiaryId: number) =>
     apiFetch<Colony[]>(`/v1/colonies?apiary_id=${encodeURIComponent(String(apiaryId))}`),

@@ -2,7 +2,9 @@ import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
+import FormControl from "@mui/material/FormControl";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import FormLabel from "@mui/material/FormLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Radio from "@mui/material/Radio";
@@ -13,159 +15,85 @@ import Stepper from "@mui/material/Stepper";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
-import { api, type EdgeDevice, type FirmwareBuild } from "../api";
-import { ApiarySelect } from "../components/ApiarySelect";
+import { api, type FirmwareBuild } from "../api";
 import { EspWebInstallButton, isWebSerialSupported } from "../components/EspWebInstallButton";
+import { FirmwareBuildProgress } from "../components/FirmwareBuildProgress";
 import { FirmwareVersionInfo } from "../components/FirmwareVersionInfo";
 import { PageHeader } from "../components/PageHeader";
 import { useSnackbar } from "../components/SnackbarProvider";
 import { FIRMWARE_BOARDS, type FirmwareBoardId } from "../constants/boards";
+import {
+  EDGE_PRODUCT_TYPES,
+  type EdgeProductTypeId,
+  edgeProductTypeById,
+} from "../constants/edgeProductTypes";
 import { useApiaryParam } from "../hooks/useApiaryParam";
 
-const steps = ["Базовая станция", "Устройство", "Сборка", "Прошивка"];
+const steps = ["Тип устройства", "Плата", "Параметры", "Сборка", "Прошивка"];
 
-type DeviceMode = "new" | "existing";
-
-function applyExistingDevice(device: EdgeDevice, setters: {
-  setConcentratorId: (id: number) => void;
-  setEdgeDeviceId: (id: number) => void;
-  setPublicId: (id: string) => void;
-  setDeviceName: (name: string) => void;
-  setColonyId: (id: number | "") => void;
-  setSelectedExistingId: (id: number) => void;
-  setDeviceMode: (mode: DeviceMode) => void;
-}) {
-  setters.setConcentratorId(device.concentrator_id);
-  setters.setEdgeDeviceId(device.id);
-  setters.setPublicId(device.public_id);
-  setters.setDeviceName(device.name ?? "");
-  setters.setColonyId(device.current_colony_id ?? "");
-  setters.setSelectedExistingId(device.id);
-  setters.setDeviceMode("existing");
+function parseEdgeDeviceId(searchParams: URLSearchParams): number | null {
+  const raw = searchParams.get("edge_device_id");
+  if (!raw) return null;
+  const id = Number(raw);
+  return Number.isFinite(id) ? id : null;
 }
 
 export function EdgeInstallPage() {
-  const { showError, showSuccess } = useSnackbar();
-  const [apiaryId, setApiaryId] = useApiaryParam();
+  const { showError } = useSnackbar();
   const [searchParams] = useSearchParams();
+  const [apiaryId, setApiaryId] = useApiaryParam();
+  const edgeDeviceId = useMemo(() => parseEdgeDeviceId(searchParams), [searchParams]);
+
   const [activeStep, setActiveStep] = useState(0);
-  const [concentratorId, setConcentratorId] = useState<number | "">("");
-  const [colonyId, setColonyId] = useState<number | "">("");
-  const [publicId, setPublicId] = useState("");
-  const [deviceName, setDeviceName] = useState("");
-  const [edgeDeviceId, setEdgeDeviceId] = useState<number | null>(null);
-  const [deviceMode, setDeviceMode] = useState<DeviceMode>("new");
-  const [selectedExistingId, setSelectedExistingId] = useState<number | "">("");
+  const [productType, setProductType] = useState<EdgeProductTypeId>("multisensor");
   const [wakeInterval, setWakeInterval] = useState(600);
   const [board, setBoard] = useState<FirmwareBoardId>("esp32dev");
   const [build, setBuild] = useState<FirmwareBuild | null>(null);
   const [polling, setPolling] = useState(false);
 
-  const apiaries = useQuery({ queryKey: ["apiaries"], queryFn: api.apiaries });
+  const selectedProduct = edgeProductTypeById(productType);
+  const firmwareReady = selectedProduct?.firmwareAvailable ?? false;
+
+  const device = useQuery({
+    queryKey: ["edge-device", edgeDeviceId],
+    queryFn: () => api.edgeDevice(edgeDeviceId!),
+    enabled: edgeDeviceId != null,
+  });
+
+  const concentratorId = device.data?.concentrator_id ?? null;
+
+  const concentrator = useQuery({
+    queryKey: ["concentrator", concentratorId],
+    queryFn: () => api.concentrator(concentratorId!),
+    enabled: concentratorId != null,
+  });
+
   useEffect(() => {
-    if (apiaryId == null && apiaries.data?.[0]) {
-      setApiaryId(apiaries.data[0].id);
+    if (concentrator.data?.apiary_id != null) {
+      setApiaryId(concentrator.data.apiary_id);
     }
-  }, [apiaryId, apiaries.data, setApiaryId]);
+  }, [concentrator.data?.apiary_id, setApiaryId]);
 
-  const concentrators = useQuery({
-    queryKey: ["concentrators", apiaryId],
-    queryFn: () => api.concentrators(apiaryId!),
-    enabled: apiaryId != null,
-  });
-
-  const colonies = useQuery({
-    queryKey: ["colonies", apiaryId],
-    queryFn: () => api.colonies(apiaryId!),
-    enabled: apiaryId != null,
-  });
-
-  const edgeDevices = useQuery({
-    queryKey: ["edge-devices", apiaryId],
-    queryFn: () => api.edgeDevices(apiaryId!),
-    enabled: apiaryId != null,
-  });
-
-  useEffect(() => {
-    const fromUrl = searchParams.get("concentrator_id");
-    if (fromUrl) {
-      setConcentratorId(Number(fromUrl));
-    }
-    const colonyUrl = searchParams.get("colony_id");
-    if (colonyUrl) setColonyId(Number(colonyUrl));
-  }, [searchParams]);
-
-  useEffect(() => {
-    const deviceUrl = searchParams.get("edge_device_id");
-    if (!deviceUrl || !edgeDevices.data?.length) return;
-    const device = edgeDevices.data.find((d) => d.id === Number(deviceUrl));
-    if (!device) return;
-    applyExistingDevice(device, {
-      setConcentratorId: (id) => setConcentratorId(id),
-      setEdgeDeviceId,
-      setPublicId,
-      setDeviceName,
-      setColonyId,
-      setSelectedExistingId,
-      setDeviceMode,
-    });
-    setActiveStep(1);
-  }, [searchParams, edgeDevices.data]);
-
-  const existingForConc = (edgeDevices.data ?? []).filter(
-    (d) => d.concentrator_id === concentratorId,
-  );
-
-  const selectedConc = concentrators.data?.find((c) => c.id === concentratorId);
-  const gatewayReady = Boolean(selectedConc?.gateway_mac);
+  const gatewayReady = Boolean(concentrator.data?.gateway_mac);
 
   const startBuild = useMutation({
-    mutationFn: (deviceId: number) =>
+    mutationFn: () =>
       api.createFirmwareBuild({
         device_type: "edge",
         board,
-        concentrator_id: Number(concentratorId),
-        edge_device_id: deviceId,
+        concentrator_id: concentratorId!,
+        edge_device_id: edgeDeviceId!,
         wake_interval_sec: wakeInterval,
       }),
     onSuccess: (result) => {
       setBuild(result);
+      setActiveStep(3);
       setPolling(true);
     },
     onError: (e: Error) => showError(e.message),
   });
-
-  const registerDevice = useMutation({
-    mutationFn: () =>
-      api.createEdgeDevice({
-        concentrator_id: Number(concentratorId),
-        name: deviceName.trim() || null,
-        colony_id: colonyId === "" ? null : Number(colonyId),
-      }),
-    onSuccess: (device) => {
-      setEdgeDeviceId(device.id);
-      setPublicId(device.public_id);
-      setDeviceName(device.name ?? "");
-      showSuccess("Устройство зарегистрировано в API");
-      setActiveStep(2);
-      startBuild.mutate(device.id);
-    },
-    onError: (e: Error) => showError(e.message),
-  });
-
-  const beginExistingBuild = () => {
-    const id = Number(selectedExistingId);
-    if (!Number.isFinite(id)) return;
-    const device = existingForConc.find((d) => d.id === id);
-    if (!device) return;
-    setEdgeDeviceId(device.id);
-    setPublicId(device.public_id);
-    setDeviceName(device.name ?? "");
-    setActiveStep(2);
-    startBuild.mutate(device.id);
-  };
 
   useEffect(() => {
     if (!polling || !build) return;
@@ -176,7 +104,7 @@ export function EdgeInstallPage() {
         setBuild(status);
         if (status.status === "ready") {
           setPolling(false);
-          setActiveStep(3);
+          setActiveStep(4);
         } else if (status.status === "failed") {
           setPolling(false);
           showError(status.error || "Сборка не удалась");
@@ -189,13 +117,72 @@ export function EdgeInstallPage() {
     return () => clearInterval(timer);
   }, [polling, build, showError]);
 
+  const edge = device.data;
+  const deviceTitle = edge ? edge.name || edge.public_id : "";
+
+  const edgeDetailUrl =
+    edgeDeviceId != null
+      ? apiaryId != null
+        ? `/devices/edge/${edgeDeviceId}?apiary_id=${apiaryId}`
+        : `/devices/edge/${edgeDeviceId}`
+      : "/devices";
+
+  if (edgeDeviceId == null) {
+    return (
+      <Box>
+        <PageHeader title="Прошивка устройства сбора данных" />
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Укажите устройство: откройте прошивку из карточки устройства (кнопка «Перепрошить») или
+          списка подключённых устройств базовой станции.
+        </Alert>
+        <Button variant="contained" component={RouterLink} to="/devices">
+          К устройствам
+        </Button>
+      </Box>
+    );
+  }
+
+  if (device.isLoading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (device.isError || !edge) {
+    return (
+      <Box>
+        <PageHeader title="Прошивка устройства сбора данных" />
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Устройство не найдено или нет доступа.
+        </Alert>
+        <Button variant="contained" component={RouterLink} to="/devices">
+          К устройствам
+        </Button>
+      </Box>
+    );
+  }
+
   return (
     <Box>
       <PageHeader
-        title="Прошивка улья (edge)"
+        title="Прошивка устройства сбора данных"
         actions={
-          <Button component={RouterLink} to="/devices" size="small">
-            К устройствам
+          <Button
+            component={RouterLink}
+            to={
+              concentratorId != null
+                ? apiaryId != null
+                  ? `/devices/${concentratorId}?apiary_id=${apiaryId}`
+                  : `/devices/${concentratorId}`
+                : apiaryId != null
+                  ? `/devices?apiary_id=${apiaryId}`
+                  : "/devices"
+            }
+            size="small"
+          >
+            К базовой станции
           </Button>
         }
       />
@@ -207,53 +194,67 @@ export function EdgeInstallPage() {
       )}
 
       <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
-        {steps.map((s) => (
-          <Step key={s}>
-            <StepLabel>{s}</StepLabel>
+        {steps.map((label) => (
+          <Step key={label}>
+            <StepLabel>{label}</StepLabel>
           </Step>
         ))}
       </Stepper>
 
       <Paper sx={{ p: 3, maxWidth: 640 }}>
-        <FirmwareVersionInfo deviceType="edge" build={build} compact={activeStep < 2} />
+        <Typography variant="h6" sx={{ mb: 2 }}>
+          {deviceTitle}
+        </Typography>
 
         {activeStep === 0 && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <ApiarySelect value={apiaryId} onChange={setApiaryId} />
-            <TextField
-              select
-              label="Базовая станция"
-              value={concentratorId}
-              onChange={(e) => {
-                setConcentratorId(Number(e.target.value));
-                setSelectedExistingId("");
-              }}
-              fullWidth
-            >
-              {(concentrators.data ?? []).map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  {c.name}
-                  {c.gateway_mac ? ` · ${c.gateway_mac}` : " · нет MAC"}
-                </MenuItem>
-              ))}
-            </TextField>
-            {!gatewayReady && concentratorId !== "" && (
-              <Alert severity="warning">
-                Сначала{" "}
-                <RouterLink to={`/devices/install/gateway?concentrator_id=${concentratorId}`}>
-                  прошейте базовую станцию
-                </RouterLink>
-                , чтобы зарегистрировать MAC.
+            <FormControl>
+              <FormLabel id="edge-product-type-label">Тип устройства</FormLabel>
+              <RadioGroup
+                aria-labelledby="edge-product-type-label"
+                value={productType}
+                onChange={(e) => setProductType(e.target.value as EdgeProductTypeId)}
+              >
+                {EDGE_PRODUCT_TYPES.map((t) => (
+                  <FormControlLabel
+                    key={t.id}
+                    value={t.id}
+                    control={<Radio />}
+                    label={t.label}
+                  />
+                ))}
+              </RadioGroup>
+            </FormControl>
+
+            {firmwareReady ? (
+              <FirmwareVersionInfo
+                deviceType="edge"
+                installedVersion={edge.firmware_version}
+                installOverview
+                description={selectedProduct?.capabilities}
+              />
+            ) : (
+              <Alert severity="info" sx={{ mb: 2, "& .MuiAlert-message": { width: "100%" } }}>
+                <Typography
+                  component="div"
+                  variant="subtitle1"
+                  sx={{ fontWeight: 700, lineHeight: 1.3, mb: 1 }}
+                >
+                  Версия прошивки
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 1.5 }}>
+                  Прошивка для «{selectedProduct?.label}» пока в разработке. Выберите другой тип
+                  устройства, чтобы продолжить.
+                </Typography>
+                {selectedProduct?.capabilities ? (
+                  <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
+                    {selectedProduct.capabilities}
+                  </Typography>
+                ) : null}
               </Alert>
             )}
-            {selectedConc?.gateway_mac && (
-              <Alert severity="info">Gateway MAC: {selectedConc.gateway_mac}</Alert>
-            )}
-            <Button
-              variant="contained"
-              disabled={!concentratorId || !gatewayReady}
-              onClick={() => setActiveStep(1)}
-            >
+
+            <Button variant="contained" disabled={!firmwareReady} onClick={() => setActiveStep(1)}>
               Далее
             </Button>
           </Box>
@@ -261,22 +262,23 @@ export function EdgeInstallPage() {
 
         {activeStep === 1 && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <RadioGroup
-              row
-              value={deviceMode}
-              onChange={(e) => setDeviceMode(e.target.value as DeviceMode)}
-            >
-              <FormControlLabel value="existing" control={<Radio />} label="Существующее устройство" />
-              <FormControlLabel value="new" control={<Radio />} label="Новое устройство" />
-            </RadioGroup>
-
+            {!gatewayReady && (
+              <Alert severity="warning">
+                Сначала{" "}
+                <RouterLink
+                  to={`/devices/install/gateway?concentrator_id=${concentratorId}${apiaryId != null ? `&apiary_id=${apiaryId}` : ""}`}
+                >
+                  прошейте базовую станцию
+                </RouterLink>
+                , чтобы зарегистрировать MAC.
+              </Alert>
+            )}
             <TextField
               select
               label="Плата (MCU)"
               value={board}
               onChange={(e) => setBoard(e.target.value as FirmwareBoardId)}
               fullWidth
-              helperText="CORE-ESP32-C3 и платы с CH343/CH340 — первый пункт. Super Mini с USB на чипе — «нативный USB»"
             >
               {FIRMWARE_BOARDS.map((b) => (
                 <MenuItem key={b.id} value={b.id}>
@@ -284,146 +286,74 @@ export function EdgeInstallPage() {
                 </MenuItem>
               ))}
             </TextField>
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button onClick={() => setActiveStep(0)}>Назад</Button>
+              <Button variant="contained" disabled={!gatewayReady} onClick={() => setActiveStep(2)}>
+                Далее
+              </Button>
+            </Box>
+          </Box>
+        )}
+
+        {activeStep === 2 && (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <TextField
               label="Интервал замера (сек)"
               type="number"
               value={wakeInterval}
               onChange={(e) => setWakeInterval(Number(e.target.value))}
               fullWidth
+              helperText="Общий параметр; настройки датчиков по типам появятся позже"
             />
-
-            {deviceMode === "existing" ? (
-              <>
-                {existingForConc.length === 0 ? (
-                  <Alert severity="warning">
-                    У этой базовой станции нет зарегистрированных устройств. Выберите «Новое устройство»
-                    или{" "}
-                    <RouterLink to="/devices">создайте устройство</RouterLink> в списке.
-                  </Alert>
-                ) : (
-                  <TextField
-                    select
-                    label="Устройство"
-                    value={selectedExistingId}
-                    onChange={(e) => {
-                      const id = Number(e.target.value);
-                      setSelectedExistingId(id);
-                      const device = existingForConc.find((d) => d.id === id);
-                      if (device) {
-                        setPublicId(device.public_id);
-                        setDeviceName(device.name ?? "");
-                        setColonyId(device.current_colony_id ?? "");
-                      }
-                    }}
-                    fullWidth
-                  >
-                    {existingForConc.map((d) => (
-                      <MenuItem key={d.id} value={d.id}>
-                        {d.name || d.public_id}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                )}
-                {selectedExistingId !== "" && (
-                  <Alert severity="info">
-                    В прошивку будет записан существующий <strong>DEVICE_PUBLIC_ID</strong>:{" "}
-                    {publicId}
-                  </Alert>
-                )}
-                <Box sx={{ display: "flex", gap: 1 }}>
-                  <Button onClick={() => setActiveStep(0)}>Назад</Button>
-                  <Button
-                    variant="contained"
-                    disabled={
-                      selectedExistingId === "" ||
-                      startBuild.isPending ||
-                      existingForConc.length === 0
-                    }
-                    onClick={beginExistingBuild}
-                  >
-                    Собрать прошивку
-                  </Button>
-                </Box>
-              </>
-            ) : (
-              <>
-                <TextField
-                  label="Название"
-                  value={deviceName}
-                  onChange={(e) => setDeviceName(e.target.value)}
-                  placeholder="Мультидатчик ad6304a0 (если пусто — подставится автоматически)"
-                  fullWidth
-                />
-                <TextField
-                  select
-                  label="Семья (опционально)"
-                  value={colonyId}
-                  onChange={(e) => setColonyId(e.target.value === "" ? "" : Number(e.target.value))}
-                  fullWidth
-                >
-                  <MenuItem value="">— не привязывать —</MenuItem>
-                  {(colonies.data ?? []).map((col) => (
-                    <MenuItem key={col.id} value={col.id}>
-                      {col.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <Box sx={{ display: "flex", gap: 1 }}>
-                  <Button onClick={() => setActiveStep(0)}>Назад</Button>
-                  <Button
-                    variant="contained"
-                    disabled={registerDevice.isPending}
-                    onClick={() => registerDevice.mutate()}
-                  >
-                    Зарегистрировать и собрать
-                  </Button>
-                </Box>
-              </>
-            )}
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button onClick={() => setActiveStep(1)}>Назад</Button>
+              <Button
+                variant="contained"
+                disabled={!gatewayReady || startBuild.isPending}
+                onClick={() => startBuild.mutate()}
+              >
+                Собрать прошивку
+              </Button>
+            </Box>
           </Box>
         )}
 
-        {activeStep === 2 && edgeDeviceId != null && (
+        {activeStep === 3 && build && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <Typography>
-              {deviceName || `Устройство #${edgeDeviceId}`} ·{" "}
-              <Typography component="span" sx={{ fontFamily: "monospace", fontSize: 14 }}>
-                {publicId}
-              </Typography>
+              Статус сборки: <strong>{build.status}</strong>
             </Typography>
-            <Button
-              variant="contained"
-              disabled={startBuild.isPending}
-              onClick={() => edgeDeviceId != null && startBuild.mutate(edgeDeviceId)}
-            >
-              Пересобрать прошивку
-            </Button>
-            {(polling || build) && build && (
+            {(build.status === "queued" || build.status === "building" || polling) && (
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <CircularProgress size={24} />
+                  <Typography color="text.secondary">Сборка на сервере…</Typography>
+                </Box>
+                <FirmwareBuildProgress build={build} deviceType="edge" />
+              </Box>
+            )}
+            {build.status === "failed" && (
               <>
-                <Typography>
-                  Статус: <strong>{build.status}</strong>
-                </Typography>
-                {(build.status === "queued" || build.status === "building") && (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <CircularProgress size={24} />
-                    <Typography color="text.secondary">Сборка…</Typography>
-                  </Box>
-                )}
+                <Alert severity="error">{build.error || "Ошибка сборки"}</Alert>
+                <Button variant="outlined" onClick={() => setActiveStep(2)}>
+                  Вернуться к параметрам
+                </Button>
               </>
             )}
           </Box>
         )}
 
-        {activeStep === 3 && build?.status === "ready" && build.manifest_url && (
+        {activeStep === 4 && build?.status === "ready" && build.manifest_url && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Alert severity="success">Прошивка готова. Подключите ESP32 улья и прошейте.</Alert>
-            <Alert severity="info">
-              После прошивки закройте эту вкладку, иначе COM-порт занят WebSerial — Arduino IDE
-              покажет «Serial port busy».
+            <Alert severity="success">
+              Прошивка готова. Подключите ESP32 и нажмите кнопку ниже.
             </Alert>
             <EspWebInstallButton manifestUrl={build.manifest_url} />
-            <Button variant="contained" component={RouterLink} to="/devices">
-              К списку устройств
+            <Alert severity="info">
+              После прошивки статус «онлайн» появится в карточке устройства.
+            </Alert>
+            <Button variant="contained" component={RouterLink} to={edgeDetailUrl}>
+              К устройству
             </Button>
           </Box>
         )}

@@ -7,6 +7,7 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Grid from "@mui/material/Grid";
+import InputAdornment from "@mui/material/InputAdornment";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -43,11 +44,21 @@ export function ConcentratorsPage() {
   const [editItem, setEditItem] = useState<Concentrator | null>(null);
   const [name, setName] = useState("");
   const [deleteItem, setDeleteItem] = useState<Concentrator | null>(null);
+  const [nameLoading, setNameLoading] = useState(false);
 
-  const openCreate = () => {
+  const openCreate = async () => {
     setEditItem(null);
-    setName("");
     setDialogOpen(true);
+    setNameLoading(true);
+    setName("");
+    try {
+      const suggested = await api.suggestedBaseStationName();
+      setName(suggested.name);
+    } catch (e) {
+      showError(String((e as Error).message));
+    } finally {
+      setNameLoading(false);
+    }
   };
 
   const openEdit = (item: Concentrator) => {
@@ -129,6 +140,20 @@ export function ConcentratorsPage() {
             placeholder={editItem ? undefined : BASE_STATION_NAME_PLACEHOLDER}
             value={name}
             onChange={(e) => setName(e.target.value)}
+            disabled={!editItem && nameLoading}
+            slotProps={
+              !editItem && nameLoading
+                ? {
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <CircularProgress size={20} />
+                        </InputAdornment>
+                      ),
+                    },
+                  }
+                : undefined
+            }
           />
         </DialogContent>
         <DialogActions>
@@ -148,7 +173,9 @@ export function ConcentratorsPage() {
           <Button
             variant="contained"
             onClick={() => save.mutate()}
-            disabled={(editItem ? !name.trim() : false) || save.isPending}
+            disabled={
+              (editItem ? !name.trim() : nameLoading || !name.trim()) || save.isPending
+            }
           >
             Сохранить
           </Button>
@@ -158,7 +185,7 @@ export function ConcentratorsPage() {
       <ConfirmDialog
         open={deleteItem != null}
         title="Удалить базовую станцию?"
-        message="Будут удалены все устройства этой базовой станции."
+        message="Базовая станция и все её устройства будут скрыты из списков. Данные в системе сохранятся."
         onCancel={() => setDeleteItem(null)}
         onConfirm={() => deleteItem && remove.mutate(deleteItem.id)}
         loading={remove.isPending}
