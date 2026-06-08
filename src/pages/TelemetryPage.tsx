@@ -216,12 +216,16 @@ export function TelemetryPage() {
             title="Температура — сводный график"
             data={tempChart.multi.data}
             series={tempChart.multi.keys.map((k) => ({ dataKey: k.dataKey, name: k.name }))}
+            periodFrom={fromIso}
+            periodTo={toIso}
           />
           <TelemetryChart
             variant="multi"
             title="Влажность — сводный график"
             data={humChart.multi.data}
             series={humChart.multi.keys.map((k) => ({ dataKey: k.dataKey, name: k.name }))}
+            periodFrom={fromIso}
+            periodTo={toIso}
           />
         </>
       ) : (
@@ -232,6 +236,8 @@ export function TelemetryPage() {
             data={tempChart.single}
             dataKey="temperature"
             unit="°C"
+            periodFrom={fromIso}
+            periodTo={toIso}
           />
           <TelemetryChart
             variant="single"
@@ -240,6 +246,8 @@ export function TelemetryPage() {
             dataKey="humidity"
             unit="%"
             color="#5D4037"
+            periodFrom={fromIso}
+            periodTo={toIso}
           />
         </>
       )}

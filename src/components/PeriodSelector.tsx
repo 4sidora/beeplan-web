@@ -14,6 +14,8 @@ type Props = {
   to: Dayjs;
   onFromChange: (v: Dayjs) => void;
   onToChange: (v: Dayjs) => void;
+  /** Без обёртки Paper — для вложения в Card. */
+  embedded?: boolean;
 };
 
 const PRESETS: { key: Preset; label: string }[] = [
@@ -31,9 +33,10 @@ export function PeriodSelector({
   to,
   onFromChange,
   onToChange,
+  embedded,
 }: Props) {
-  return (
-    <Paper sx={{ p: 2, mb: 2 }}>
+  const content = (
+    <>
       <Typography variant="subtitle2" gutterBottom>
         Период
       </Typography>
@@ -68,6 +71,12 @@ export function PeriodSelector({
           {from.format("DD.MM.YYYY HH:mm")} — {to.format("DD.MM.YYYY HH:mm")}
         </Typography>
       )}
-    </Paper>
+    </>
   );
+
+  if (embedded) {
+    return <Box sx={{ mb: 2 }}>{content}</Box>;
+  }
+
+  return <Paper sx={{ p: 2, mb: 2 }}>{content}</Paper>;
 }

@@ -1,3 +1,5 @@
+import { saveReturnUrl } from "./utils/returnUrl";
+
 const base = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "http://localhost:8000";
 
 export function getToken(): string | null {
@@ -9,6 +11,19 @@ export function setToken(token: string | null) {
   else localStorage.removeItem("beeplan_token");
 }
 
+let sessionExpiredHandled = false;
+
+function handleSessionExpired(): void {
+  if (sessionExpiredHandled || !getToken()) return;
+  sessionExpiredHandled = true;
+  const returnTo = window.location.pathname + window.location.search;
+  if (returnTo && returnTo !== "/login") {
+    saveReturnUrl(returnTo);
+  }
+  setToken(null);
+  window.location.replace("/login");
+}
+
 async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
@@ -17,6 +32,9 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${base}${path}`, { ...init, headers });
   const text = await res.text();
   if (!res.ok) {
+    if (res.status === 401 && path !== "/v1/auth/token") {
+      handleSessionExpired();
+    }
     let message = text || res.statusText;
     try {
       const parsed = JSON.parse(text) as { detail?: string | { msg?: string }[] };
@@ -65,9 +83,12 @@ export type Concentrator = {
   name: string;
   ingest_token: string;
   gateway_mac: string | null;
+  wifi_channel: number | null;
+  spool_pending_count?: number;
   last_seen_at: string | null;
   firmware_version: string | null;
   edge_device_count?: number;
+  recent_telemetry?: TelemetryPoint[];
 };
 export type EdgeDevice = {
   id: number;
@@ -75,6 +96,7 @@ export type EdgeDevice = {
   concentrator_name: string | null;
   public_id: string;
   name: string | null;
+  telemetry_slot_sec: number | null;
   current_colony_id: number | null;
   last_seen_at: string | null;
   firmware_version: string | null;
@@ -254,6 +276,10 @@ export const api = {
     ),
   allConcentrators: () => fetchAllConcentrators(),
   concentrator: (id: number) => apiFetch<Concentrator>(`/v1/concentrators/${id}`),
+  concentratorTelemetry: (concentratorId: number, params?: TelemetryParams) =>
+    apiFetch<TelemetryPoint[]>(
+      `/v1/concentrators/${encodeURIComponent(String(concentratorId))}/telemetry${telemetryQuery(params)}`,
+    ),
   createConcentrator: (apiaryId: number, name?: string | null) =>
     apiFetch<Concentrator>("/v1/concentrators", {
       method: "POST",

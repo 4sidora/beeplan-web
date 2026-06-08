@@ -8,9 +8,12 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { Link as RouterLink } from "react-router-dom";
 import type { EdgeDevice } from "../api";
+import { DeviceStatusIndicators } from "./DeviceStatusIndicators";
 import { formatDateTime } from "../utils/formatDateTime";
 import { isDeviceOnline } from "../utils/deviceOnline";
 import { latestTelemetryByMetric, telemetryBadgeLabel } from "../utils/metricLabels";
+
+const CARD_STATUS_METRICS = new Set(["signal_level", "battery_percent", "firmware_version"]);
 
 type Props = {
   item: EdgeDevice;
@@ -19,8 +22,13 @@ type Props = {
 
 export function EdgeDeviceCard({ item, colonyLabel }: Props) {
   const online = isDeviceOnline(item.last_seen_at);
-  const metricBadges = latestTelemetryByMetric(item.recent_telemetry ?? []);
-  const noData = metricBadges.length === 0 && item.last_seen_at == null;
+  const metricBadges = latestTelemetryByMetric(item.recent_telemetry ?? []).filter(
+    (p) => !CARD_STATUS_METRICS.has(p.metric),
+  );
+  const hasStatusData =
+    item.recent_telemetry?.some((p) => p.metric === "signal_level" || p.metric === "battery_percent") ??
+    false;
+  const noData = metricBadges.length === 0 && !hasStatusData && item.last_seen_at == null;
   const contactTooltip = `Последний контакт: ${formatDateTime(item.last_seen_at)}`;
 
   return (
@@ -47,6 +55,10 @@ export function EdgeDeviceCard({ item, colonyLabel }: Props) {
             label={`Прошивка: ${item.firmware_version ?? "—"}`}
             variant="outlined"
           />
+        </Box>
+
+        <Box sx={{ mb: 1.5 }}>
+          <DeviceStatusIndicators recentTelemetry={item.recent_telemetry} />
         </Box>
 
         {noData ? (

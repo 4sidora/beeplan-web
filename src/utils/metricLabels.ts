@@ -4,6 +4,12 @@ import { formatTelemetryValue } from "./formatTelemetryValue";
 const METRIC_LABELS: Record<string, string> = {
   temperature_c: "Температура",
   relative_humidity: "Влажность",
+  signal_level: "Сигнал",
+  battery_percent: "Заряд батареи",
+  firmware_version: "Прошивка",
+  audio_features: "Аудио",
+  weight_kg: "Вес",
+  weight: "Вес",
 };
 
 export function metricLabel(metric: string): string {

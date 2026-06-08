@@ -11,21 +11,26 @@ import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableHead from "@mui/material/TableHead";
+import TableContainer from "@mui/material/TableContainer";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useQuery } from "@tanstack/react-query";
 import "dayjs/locale/ru";
+import { useMemo } from "react";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import { api } from "../api";
+import { DeviceStatusCharts } from "../components/DeviceStatusCharts";
 import { ObjectCardHeader } from "../components/ObjectCardHeader";
 import { PeriodSelector } from "../components/PeriodSelector";
 import { TelemetryChart } from "../components/TelemetryChart";
 import { useLocalTelemetryPeriod } from "../hooks/useLocalTelemetryPeriod";
+import { formatDateTime } from "../utils/formatDateTime";
 import { formatLastSeen } from "../utils/formatLastSeen";
 import { formatTelemetryValue } from "../utils/formatTelemetryValue";
-import { pointsToSingleSeries } from "../utils/telemetry";
+import { metricLabel } from "../utils/metricLabels";
+import { pivotTelemetryByTime, pointsToSingleSeries } from "../utils/telemetry";
 
 function ParamRow({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -96,6 +101,35 @@ export function EdgeDeviceDetailPage() {
     enabled: Number.isFinite(deviceId),
   });
 
+  const signalQuery = useQuery({
+    queryKey: ["edge-device-telemetry", deviceId, "signal_level", fromIso, toIso],
+    queryFn: () =>
+      api.edgeDeviceTelemetry(deviceId, {
+        metric: "signal_level",
+        from: fromIso,
+        to: toIso,
+        limit: 5000,
+      }),
+    enabled: Number.isFinite(deviceId),
+  });
+
+  const batteryQuery = useQuery({
+    queryKey: ["edge-device-telemetry", deviceId, "battery_percent", fromIso, toIso],
+    queryFn: () =>
+      api.edgeDeviceTelemetry(deviceId, {
+        metric: "battery_percent",
+        from: fromIso,
+        to: toIso,
+        limit: 5000,
+      }),
+    enabled: Number.isFinite(deviceId),
+  });
+
+  const telemetryTable = useMemo(
+    () => pivotTelemetryByTime(telemetry.data ?? []),
+    [telemetry.data],
+  );
+
   if (!Number.isFinite(deviceId)) {
     return <Typography color="error">Некорректный ID устройства</Typography>;
   }
@@ -120,7 +154,6 @@ export function EdgeDeviceDetailPage() {
 
   const tempChart = pointsToSingleSeries(tempQuery.data ?? [], "temperature_c", "temperature");
   const humChart = pointsToSingleSeries(humQuery.data ?? [], "relative_humidity", "humidity");
-  const tableRows = [...(telemetry.data ?? [])].reverse();
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru">
@@ -195,10 +228,13 @@ export function EdgeDeviceDetailPage() {
         onToChange={setTo}
       />
 
+      <Typography variant="h6" sx={{ mb: 1 }}>
+        Датчики улья
+      </Typography>
       {tempQuery.isLoading || humQuery.isLoading ? (
         <CircularProgress sx={{ mb: 3 }} />
       ) : (
-        <Grid container spacing={2} sx={{ mt: 1, mb: 3 }}>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid size={{ xs: 12, md: 6 }}>
             <TelemetryChart
               variant="single"
@@ -206,6 +242,8 @@ export function EdgeDeviceDetailPage() {
               data={tempChart}
               dataKey="temperature"
               unit="°C"
+              periodFrom={fromIso}
+              periodTo={toIso}
             />
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
@@ -216,38 +254,64 @@ export function EdgeDeviceDetailPage() {
               dataKey="humidity"
               unit="%"
               color="#5D4037"
+              periodFrom={fromIso}
+              periodTo={toIso}
             />
           </Grid>
         </Grid>
       )}
+
+      <Typography variant="h6" sx={{ mb: 1 }}>
+        Состояние устройства
+      </Typography>
+      <DeviceStatusCharts
+        signalPoints={signalQuery.data}
+        batteryPoints={batteryQuery.data}
+        loading={signalQuery.isLoading || batteryQuery.isLoading}
+        periodFrom={fromIso}
+        periodTo={toIso}
+      />
 
       <Typography variant="h6" gutterBottom>
         Все записи за период
       </Typography>
       {telemetry.isLoading ? (
         <CircularProgress size={24} />
-      ) : tableRows.length === 0 ? (
+      ) : telemetryTable.rows.length === 0 ? (
         <Typography color="text.secondary">Нет данных за выбранный период.</Typography>
       ) : (
         <Paper variant="outlined">
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Время</TableCell>
-                <TableCell>Метрика</TableCell>
-                <TableCell>Значение</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {tableRows.map((row, i) => (
-                <TableRow key={`${row.ts}-${row.metric}-${i}`}>
-                  <TableCell>{new Date(row.ts).toLocaleString()}</TableCell>
-                  <TableCell>{row.metric}</TableCell>
-                  <TableCell>{formatTelemetryValue(row.metric, row.value)}</TableCell>
+          <TableContainer sx={{ overflowX: "auto" }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ whiteSpace: "nowrap" }}>Время</TableCell>
+                  {telemetryTable.metrics.map((metric) => (
+                    <TableCell key={metric} sx={{ whiteSpace: "nowrap" }}>
+                      {metricLabel(metric)}
+                    </TableCell>
+                  ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {telemetryTable.rows.map((row) => (
+                  <TableRow key={row.ts}>
+                    <TableCell sx={{ whiteSpace: "nowrap", fontWeight: 500 }}>
+                      {formatDateTime(row.ts)}
+                    </TableCell>
+                    {telemetryTable.metrics.map((metric) => {
+                      const value = row.values[metric];
+                      return (
+                        <TableCell key={metric}>
+                          {value != null ? formatTelemetryValue(metric, value) : "—"}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </Paper>
       )}
     </LocalizationProvider>

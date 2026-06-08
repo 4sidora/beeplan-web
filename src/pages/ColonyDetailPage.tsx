@@ -168,6 +168,8 @@ export function ColonyDetailPage() {
             data={tempChart}
             dataKey="temperature"
             unit="°C"
+            periodFrom={fromIso}
+            periodTo={toIso}
           />
           <TelemetryChart
             variant="single"
@@ -176,6 +178,8 @@ export function ColonyDetailPage() {
             dataKey="humidity"
             unit="%"
             color="#5D4037"
+            periodFrom={fromIso}
+            periodTo={toIso}
           />
         </>
       )}

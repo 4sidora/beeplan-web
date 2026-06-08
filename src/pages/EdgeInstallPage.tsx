@@ -48,7 +48,7 @@ export function EdgeInstallPage() {
 
   const [activeStep, setActiveStep] = useState(0);
   const [productType, setProductType] = useState<EdgeProductTypeId>("multisensor");
-  const [wakeInterval, setWakeInterval] = useState(600);
+  const [wakeInterval, setWakeInterval] = useState(3600);
   const [board, setBoard] = useState<FirmwareBoardId>("esp32dev");
   const [build, setBuild] = useState<FirmwareBuild | null>(null);
   const [polling, setPolling] = useState(false);
@@ -77,6 +77,7 @@ export function EdgeInstallPage() {
   }, [concentrator.data?.apiary_id, setApiaryId]);
 
   const gatewayReady = Boolean(concentrator.data?.gateway_mac);
+  const channelReady = concentrator.data?.wifi_channel != null;
 
   const startBuild = useMutation({
     mutationFn: () =>
@@ -273,6 +274,12 @@ export function EdgeInstallPage() {
                 , чтобы зарегистрировать MAC.
               </Alert>
             )}
+            {gatewayReady && !channelReady && (
+              <Alert severity="warning">
+                Базовая станция ещё не сообщила Wi‑Fi канал. Подключите gateway к интернету и
+                дождитесь heartbeat (канал появится после первого выхода в сеть).
+              </Alert>
+            )}
             <TextField
               select
               label="Плата (MCU)"
@@ -288,7 +295,7 @@ export function EdgeInstallPage() {
             </TextField>
             <Box sx={{ display: "flex", gap: 1 }}>
               <Button onClick={() => setActiveStep(0)}>Назад</Button>
-              <Button variant="contained" disabled={!gatewayReady} onClick={() => setActiveStep(2)}>
+              <Button variant="contained" disabled={!gatewayReady || !channelReady} onClick={() => setActiveStep(2)}>
                 Далее
               </Button>
             </Box>
@@ -303,13 +310,26 @@ export function EdgeInstallPage() {
               value={wakeInterval}
               onChange={(e) => setWakeInterval(Number(e.target.value))}
               fullWidth
-              helperText="Общий параметр; настройки датчиков по типам появятся позже"
+              helperText="По умолчанию 3600 с (раз в час). TDMA-слот назначается автоматически."
+            />
+            <TextField
+              label="TDMA-слот (сек)"
+              value={edge.telemetry_slot_sec ?? "—"}
+              fullWidth
+              InputProps={{ readOnly: true }}
+              helperText="Смещение внутри часа; назначается при создании устройства"
+            />
+            <TextField
+              label="Wi‑Fi канал базовой станции"
+              value={concentrator.data?.wifi_channel ?? "—"}
+              fullWidth
+              InputProps={{ readOnly: true }}
             />
             <Box sx={{ display: "flex", gap: 1 }}>
               <Button onClick={() => setActiveStep(1)}>Назад</Button>
               <Button
                 variant="contained"
-                disabled={!gatewayReady || startBuild.isPending}
+                disabled={!gatewayReady || !channelReady || startBuild.isPending}
                 onClick={() => startBuild.mutate()}
               >
                 Собрать прошивку

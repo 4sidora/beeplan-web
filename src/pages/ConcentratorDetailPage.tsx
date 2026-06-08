@@ -12,11 +12,16 @@ import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import "dayjs/locale/ru";
 import { useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { ConcentratorDetailHeader } from "../components/ConcentratorDetailHeader";
+import { DeviceStatusDetails } from "../components/DeviceStatusDetails";
+import { useLocalTelemetryPeriod } from "../hooks/useLocalTelemetryPeriod";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EdgeDeviceCard } from "../components/EdgeDeviceCard";
 import { FormDialog } from "../components/FormDialog";
@@ -38,11 +43,40 @@ export function ConcentratorDetailPage() {
   const qc = useQueryClient();
   const { showSuccess, showError } = useSnackbar();
 
+  const [statusExpanded, setStatusExpanded] = useState(false);
+
+  const { preset, setPreset, from, to, setFrom, setTo, fromIso, toIso } =
+    useLocalTelemetryPeriod("14d");
+
   const concentrator = useQuery({
     queryKey: ["concentrator", concentratorId],
     queryFn: () => api.concentrator(concentratorId),
     enabled: Number.isFinite(concentratorId),
     refetchInterval: 30_000,
+  });
+
+  const signalQuery = useQuery({
+    queryKey: ["concentrator-telemetry", concentratorId, "signal_level", fromIso, toIso],
+    queryFn: () =>
+      api.concentratorTelemetry(concentratorId, {
+        metric: "signal_level",
+        from: fromIso,
+        to: toIso,
+        limit: 5000,
+      }),
+    enabled: Number.isFinite(concentratorId) && statusExpanded,
+  });
+
+  const batteryQuery = useQuery({
+    queryKey: ["concentrator-telemetry", concentratorId, "battery_percent", fromIso, toIso],
+    queryFn: () =>
+      api.concentratorTelemetry(concentratorId, {
+        metric: "battery_percent",
+        from: fromIso,
+        to: toIso,
+        limit: 5000,
+      }),
+    enabled: Number.isFinite(concentratorId) && statusExpanded,
   });
 
   const apiaryId = concentrator.data?.apiary_id ?? null;
@@ -139,12 +173,31 @@ export function ConcentratorDetailPage() {
   const conc = concentrator.data;
 
   return (
-    <>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru">
       <Button component={RouterLink} to="/devices" startIcon={<ArrowBackIcon />} sx={{ mb: 2 }}>
         К списку базовых станций
       </Button>
 
-      <ConcentratorDetailHeader item={conc} onEdit={openEditName} />
+      <ConcentratorDetailHeader
+        item={conc}
+        onEdit={openEditName}
+        statusExpanded={statusExpanded}
+        onStatusToggle={() => setStatusExpanded((v) => !v)}
+        statusDetails={
+          <DeviceStatusDetails
+            signalPoints={signalQuery.data}
+            batteryPoints={batteryQuery.data}
+            chartsLoading={signalQuery.isLoading || batteryQuery.isLoading}
+            compact
+            preset={preset}
+            onPresetChange={setPreset}
+            from={from}
+            to={to}
+            onFromChange={setFrom}
+            onToChange={setTo}
+          />
+        }
+      />
 
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
         <Typography variant="h6">Подключенные устройства</Typography>
@@ -252,6 +305,6 @@ export function ConcentratorDetailPage() {
         onConfirm={() => removeConc.mutate()}
         loading={removeConc.isPending}
       />
-    </>
+    </LocalizationProvider>
   );
 }
