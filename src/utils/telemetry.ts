@@ -1,6 +1,6 @@
 import type { TelemetryPoint } from "../api";
 
-export type Preset = "24h" | "7d" | "14d" | "30d" | "custom";
+export type Preset = "1h" | "24h" | "7d" | "14d" | "30d" | "custom";
 
 export const CHART_COLORS = [
   "#F5A623",

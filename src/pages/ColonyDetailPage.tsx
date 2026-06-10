@@ -39,7 +39,7 @@ function ParamRow({ label, value }: { label: string; value: ReactNode }) {
 export function ColonyDetailPage() {
   const { colonyId: rawId } = useParams();
   const colonyId = rawId ? Number(rawId) : NaN;
-  const { preset, setPreset, from, to, setFrom, setTo, fromIso, toIso } = useLocalTelemetryPeriod("14d");
+  const { preset, setPreset, from, to, setFrom, setTo, fromIso, toIso } = useLocalTelemetryPeriod();
 
   const colony = useQuery({
     queryKey: ["colony", colonyId],

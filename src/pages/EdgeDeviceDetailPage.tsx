@@ -46,7 +46,7 @@ function ParamRow({ label, value }: { label: string; value: ReactNode }) {
 export function EdgeDeviceDetailPage() {
   const { deviceId: rawId } = useParams();
   const deviceId = rawId ? Number(rawId) : NaN;
-  const { preset, setPreset, from, to, setFrom, setTo, fromIso, toIso } = useLocalTelemetryPeriod("14d");
+  const { preset, setPreset, from, to, setFrom, setTo, fromIso, toIso } = useLocalTelemetryPeriod();
 
   const device = useQuery({
     queryKey: ["edge-device", deviceId],

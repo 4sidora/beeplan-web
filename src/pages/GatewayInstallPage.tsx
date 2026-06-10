@@ -18,7 +18,7 @@ import { FirmwareBuildProgress } from "../components/FirmwareBuildProgress";
 import { FirmwareVersionInfo } from "../components/FirmwareVersionInfo";
 import { PageHeader } from "../components/PageHeader";
 import { useSnackbar } from "../components/SnackbarProvider";
-import { FIRMWARE_BOARDS, type FirmwareBoardId } from "../constants/boards";
+import { boardsForProfile, type FirmwareBoardId } from "../constants/boards";
 import { useApiaryParam } from "../hooks/useApiaryParam";
 
 const DEFAULT_DEVICE_API_URL = "http://192.168.1.42:8000";
@@ -192,7 +192,7 @@ export function GatewayInstallPage() {
               onChange={(e) => setBoard(e.target.value as FirmwareBoardId)}
               fullWidth
             >
-              {FIRMWARE_BOARDS.map((b) => (
+              {boardsForProfile("gateway").map((b) => (
                 <MenuItem key={b.id} value={b.id}>
                   {b.label}
                 </MenuItem>

@@ -6,6 +6,8 @@ import type { Preset } from "../utils/telemetry";
 function presetRange(preset: Preset): { from: Dayjs; to: Dayjs } {
   const to = dayjs();
   switch (preset) {
+    case "1h":
+      return { from: to.subtract(1, "hour"), to };
     case "24h":
       return { from: to.subtract(24, "hour"), to };
     case "7d":
@@ -32,7 +34,7 @@ export function useTelemetryPeriod(): {
   const [params, setParams] = useSearchParams();
   const rawPreset = params.get("preset") as Preset | null;
   const preset: Preset =
-    rawPreset && ["24h", "7d", "14d", "30d", "custom"].includes(rawPreset) ? rawPreset : "7d";
+    rawPreset && ["1h", "24h", "7d", "14d", "30d", "custom"].includes(rawPreset) ? rawPreset : "1h";
 
   const rawFrom = params.get("from");
   const rawTo = params.get("to");
@@ -41,7 +43,7 @@ export function useTelemetryPeriod(): {
     const range =
       preset === "custom"
         ? {
-            from: rawFrom ? dayjs(rawFrom) : presetRange("7d").from,
+            from: rawFrom ? dayjs(rawFrom) : presetRange("1h").from,
             to: rawTo ? dayjs(rawTo) : dayjs(),
           }
         : presetRange(preset);

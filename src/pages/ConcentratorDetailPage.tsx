@@ -46,7 +46,7 @@ export function ConcentratorDetailPage() {
   const [statusExpanded, setStatusExpanded] = useState(false);
 
   const { preset, setPreset, from, to, setFrom, setTo, fromIso, toIso } =
-    useLocalTelemetryPeriod("14d");
+    useLocalTelemetryPeriod();
 
   const concentrator = useQuery({
     queryKey: ["concentrator", concentratorId],

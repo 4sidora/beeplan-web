@@ -5,7 +5,6 @@ import CircularProgress from "@mui/material/CircularProgress";
 import FormControl from "@mui/material/FormControl";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import FormLabel from "@mui/material/FormLabel";
-import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Radio from "@mui/material/Radio";
 import RadioGroup from "@mui/material/RadioGroup";
@@ -23,7 +22,8 @@ import { FirmwareBuildProgress } from "../components/FirmwareBuildProgress";
 import { FirmwareVersionInfo } from "../components/FirmwareVersionInfo";
 import { PageHeader } from "../components/PageHeader";
 import { useSnackbar } from "../components/SnackbarProvider";
-import { FIRMWARE_BOARDS, type FirmwareBoardId } from "../constants/boards";
+import { FirmwareBoardPicker } from "../components/FirmwareBoardPicker";
+import type { FirmwareBoardId } from "../constants/boards";
 import {
   EDGE_PRODUCT_TYPES,
   type EdgeProductTypeId,
@@ -49,7 +49,7 @@ export function EdgeInstallPage() {
   const [activeStep, setActiveStep] = useState(0);
   const [productType, setProductType] = useState<EdgeProductTypeId>("multisensor");
   const [wakeInterval, setWakeInterval] = useState(3600);
-  const [board, setBoard] = useState<FirmwareBoardId>("esp32dev");
+  const [board, setBoard] = useState<FirmwareBoardId>("ttgo-t-energy");
   const [build, setBuild] = useState<FirmwareBuild | null>(null);
   const [polling, setPolling] = useState(false);
 
@@ -202,7 +202,7 @@ export function EdgeInstallPage() {
         ))}
       </Stepper>
 
-      <Paper sx={{ p: 3, maxWidth: 640 }}>
+      <Paper sx={{ p: 3, maxWidth: activeStep === 1 ? 960 : 640 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>
           {deviceTitle}
         </Typography>
@@ -280,19 +280,7 @@ export function EdgeInstallPage() {
                 дождитесь heartbeat (канал появится после первого выхода в сеть).
               </Alert>
             )}
-            <TextField
-              select
-              label="Плата (MCU)"
-              value={board}
-              onChange={(e) => setBoard(e.target.value as FirmwareBoardId)}
-              fullWidth
-            >
-              {FIRMWARE_BOARDS.map((b) => (
-                <MenuItem key={b.id} value={b.id}>
-                  {b.label}
-                </MenuItem>
-              ))}
-            </TextField>
+            <FirmwareBoardPicker profile="edge" value={board} onChange={setBoard} />
             <Box sx={{ display: "flex", gap: 1 }}>
               <Button onClick={() => setActiveStep(0)}>Назад</Button>
               <Button variant="contained" disabled={!gatewayReady || !channelReady} onClick={() => setActiveStep(2)}>

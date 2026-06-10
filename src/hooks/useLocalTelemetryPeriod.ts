@@ -5,6 +5,8 @@ import type { Preset } from "../utils/telemetry";
 function presetRange(preset: Preset): { from: Dayjs; to: Dayjs } {
   const to = dayjs();
   switch (preset) {
+    case "1h":
+      return { from: to.subtract(1, "hour"), to };
     case "24h":
       return { from: to.subtract(24, "hour"), to };
     case "7d":
@@ -14,12 +16,12 @@ function presetRange(preset: Preset): { from: Dayjs; to: Dayjs } {
     case "30d":
       return { from: to.subtract(30, "day"), to };
     default:
-      return { from: to.subtract(14, "day"), to };
+      return { from: to.subtract(1, "hour"), to };
   }
 }
 
 /** Period state for embedded charts (not synced to URL). */
-export function useLocalTelemetryPeriod(initialPreset: Preset = "14d") {
+export function useLocalTelemetryPeriod(initialPreset: Preset = "1h") {
   const [preset, setPresetState] = useState<Preset>(initialPreset);
   const [from, setFromState] = useState(() => presetRange(initialPreset).from);
   const [to, setToState] = useState(() => presetRange(initialPreset).to);

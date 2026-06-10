@@ -19,6 +19,7 @@ type Props = {
 };
 
 const PRESETS: { key: Preset; label: string }[] = [
+  { key: "1h", label: "1 ч" },
   { key: "24h", label: "24 ч" },
   { key: "7d", label: "7 дней" },
   { key: "14d", label: "14 дней" },
