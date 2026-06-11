@@ -22,6 +22,7 @@ type Props = {
   to: Dayjs;
   onFromChange: (v: Dayjs) => void;
   onToChange: (v: Dayjs) => void;
+  wakeIntervalSec?: number | null;
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
 };
@@ -39,6 +40,7 @@ export function DeviceStatusPanel({
   to,
   onFromChange,
   onToChange,
+  wakeIntervalSec,
   expanded: expandedProp,
   onExpandedChange,
 }: Props) {
@@ -74,6 +76,7 @@ export function DeviceStatusPanel({
               to={to}
               onFromChange={onFromChange}
               onToChange={onToChange}
+              wakeIntervalSec={wakeIntervalSec}
             />
           </CardContent>
         </Card>

@@ -25,7 +25,7 @@ export function EspWebInstallButton({ manifestUrl, label = "Перепрошит
     const script = document.createElement("script");
     script.type = "module";
     script.src =
-      "https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module";
+      "https://unpkg.com/esp-web-tools@10.2.1/dist/web/install-button.js?module";
     document.head.appendChild(script);
   }, []);
 

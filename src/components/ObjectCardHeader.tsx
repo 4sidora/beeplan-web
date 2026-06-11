@@ -4,7 +4,7 @@ import Chip from "@mui/material/Chip";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { Link as RouterLink } from "react-router-dom";
-import { formatDateTime } from "../utils/formatDateTime";
+import { formatLastSeen } from "../utils/formatLastSeen";
 import { isDeviceOnline } from "../utils/deviceOnline";
 
 export type HeaderAction = {
@@ -17,6 +17,8 @@ export type HeaderAction = {
 type Props = {
   title: string;
   lastSeenAt: string | null | undefined;
+  /** Интервал замера edge, с; для gateway не передавать. */
+  wakeIntervalSec?: number | null;
   titleVariant?: "h5" | "h6";
   secondaryActions?: HeaderAction[];
   primaryAction: HeaderAction;
@@ -46,12 +48,13 @@ function HeaderButton({ action }: { action: HeaderAction }) {
 export function ObjectCardHeader({
   title,
   lastSeenAt,
+  wakeIntervalSec,
   titleVariant = "h6",
   secondaryActions = [],
   primaryAction,
 }: Props) {
-  const online = isDeviceOnline(lastSeenAt);
-  const contactTooltip = `Последний контакт: ${formatDateTime(lastSeenAt)}`;
+  const online = isDeviceOnline(lastSeenAt, wakeIntervalSec);
+  const contactTooltip = formatLastSeen(lastSeenAt);
 
   return (
     <Box

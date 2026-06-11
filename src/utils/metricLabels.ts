@@ -5,6 +5,7 @@ const METRIC_LABELS: Record<string, string> = {
   temperature_c: "Температура",
   relative_humidity: "Влажность",
   signal_level: "Сигнал",
+  battery_voltage: "Напряжение батареи",
   battery_percent: "Заряд батареи",
   firmware_version: "Прошивка",
   audio_features: "Аудио",

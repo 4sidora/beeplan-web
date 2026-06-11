@@ -2,6 +2,8 @@ import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Step from "@mui/material/Step";
@@ -50,6 +52,7 @@ export function GatewayInstallPage() {
   const [wifiPassword, setWifiPassword] = useState("");
   const [apiBaseUrl, setApiBaseUrl] = useState(deviceApiUrl);
   const [board, setBoard] = useState<FirmwareBoardId>("esp32dev");
+  const [debugSerial, setDebugSerial] = useState(true);
   const [build, setBuild] = useState<FirmwareBuild | null>(null);
   const [polling, setPolling] = useState(false);
 
@@ -74,6 +77,7 @@ export function GatewayInstallPage() {
         wifi_ssid: wifiSsid,
         wifi_password: wifiPassword,
         api_base_url: apiBaseUrl,
+        debug_serial: debugSerial,
       }),
     onSuccess: (result) => {
       setBuild(result);
@@ -225,6 +229,12 @@ export function GatewayInstallPage() {
               value={apiBaseUrl}
               onChange={(e) => setApiBaseUrl(e.target.value)}
               fullWidth
+            />
+            <FormControlLabel
+              control={
+                <Checkbox checked={debugSerial} onChange={(e) => setDebugSerial(e.target.checked)} />
+              }
+              label="Отладочный UART-лог (рекомендуется при настройке)"
             />
             <Box sx={{ display: "flex", gap: 1 }}>
               <Button onClick={() => setActiveStep(0)}>Назад</Button>

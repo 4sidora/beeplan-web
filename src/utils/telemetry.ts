@@ -18,6 +18,7 @@ export function numericFromValue(metric: string, value: unknown): number | null 
   const v = value as Record<string, unknown>;
   if (metric === "temperature_c" && typeof v.celsius === "number") return v.celsius;
   if (metric === "relative_humidity" && typeof v.percent === "number") return v.percent;
+  if (metric === "battery_voltage" && typeof v.volts === "number") return v.volts;
   if (metric === "battery_percent" && typeof v.percent === "number") return v.percent;
   if (metric === "signal_level" && typeof v.dbm === "number") return v.dbm;
   return null;
@@ -40,7 +41,16 @@ export type DataGap = {
 
 export const DATA_GAP_FILL = "rgba(244, 67, 54, 0.14)";
 
+/** Общие props заливки пропусков на графиках (Recharts ReferenceArea). */
+export const DATA_GAP_AREA_PROPS = {
+  fill: DATA_GAP_FILL,
+  strokeOpacity: 0,
+  ifOverflow: "extendDomain" as const,
+};
+
 const DEFAULT_GAP_FLOOR_MS = 30 * 60_000;
+const UNKNOWN_INTERVAL_GAP_FLOOR_MS = 60_000;
+export const DATA_GAP_INTERVAL_MULTIPLIER = 3;
 
 function toTimestamp(value: string | number | undefined): number | null {
   if (value == null) return null;
@@ -59,6 +69,36 @@ function medianInterval(sortedTs: number[]): number {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
+/**
+ * Ожидаемый шаг между точками для красных зон пропусков.
+ * Если задан wake_interval из БД — используем его; иначе медиана фактических интервалов.
+ */
+function baselineIntervalMs(
+  sortedTs: number[],
+  intervalSec: number | null | undefined,
+): number | null {
+  if (intervalSec != null && intervalSec > 0) {
+    return intervalSec * 1000;
+  }
+  if (sortedTs.length >= 2) {
+    return medianInterval(sortedTs);
+  }
+  return null;
+}
+
+/** Порог «нет данных»: базовый шаг × множитель. */
+export function gapThresholdMs(options?: {
+  expectedIntervalSec?: number | null;
+  gapMultiplier?: number;
+  sortedTimestamps?: number[];
+}): number {
+  const gapMultiplier = options?.gapMultiplier ?? DATA_GAP_INTERVAL_MULTIPLIER;
+  const sorted = options?.sortedTimestamps ?? [];
+  const baseline = baselineIntervalMs(sorted, options?.expectedIntervalSec);
+  if (baseline == null) return DEFAULT_GAP_FLOOR_MS;
+  return Math.max(baseline * gapMultiplier, UNKNOWN_INTERVAL_GAP_FLOOR_MS);
+}
+
 /** Периоды без данных: между точками, а также от начала/конца выбранного интервала. */
 export function findDataGaps(
   points: { ts: number }[],
@@ -67,26 +107,27 @@ export function findDataGaps(
     periodTo?: number;
     minGapMs?: number;
     gapMultiplier?: number;
+    /** Интервал замера устройства (wake_interval_sec), секунды. */
+    expectedIntervalSec?: number | null;
   },
 ): DataGap[] {
-  const { periodFrom, periodTo, gapMultiplier = 3 } = options ?? {};
+  const { periodFrom, periodTo, gapMultiplier = DATA_GAP_INTERVAL_MULTIPLIER } = options ?? {};
   const sorted = [...points].sort((a, b) => a.ts - b.ts);
 
+  const minGapMs =
+    options?.minGapMs ??
+    gapThresholdMs({
+      expectedIntervalSec: options?.expectedIntervalSec,
+      gapMultiplier,
+      sortedTimestamps: sorted.map((p) => p.ts),
+    });
+
   if (sorted.length === 0) {
-    if (
-      periodFrom != null &&
-      periodTo != null &&
-      periodTo > periodFrom &&
-      periodTo - periodFrom >= (options?.minGapMs ?? DEFAULT_GAP_FLOOR_MS)
-    ) {
+    if (periodFrom != null && periodTo != null && periodTo > periodFrom && periodTo - periodFrom >= minGapMs) {
       return [{ fromTs: periodFrom, toTs: periodTo }];
     }
     return [];
   }
-
-  const minGapMs =
-    options?.minGapMs ??
-    Math.max(medianInterval(sorted.map((p) => p.ts)) * gapMultiplier, DEFAULT_GAP_FLOOR_MS);
 
   const gaps: DataGap[] = [];
 
@@ -223,6 +264,7 @@ export const TELEMETRY_PRIMARY_METRICS = [
 /** Сигнал, батарея и прошивка — всегда в конце таблицы. */
 export const TELEMETRY_TRAILING_METRICS = [
   "signal_level",
+  "battery_voltage",
   "battery_percent",
   "firmware_version",
 ] as const;

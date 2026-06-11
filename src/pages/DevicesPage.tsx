@@ -5,6 +5,7 @@ import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import Tooltip from "@mui/material/Tooltip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -32,12 +33,14 @@ import { PageHeader } from "../components/PageHeader";
 import { useSnackbar } from "../components/SnackbarProvider";
 import { BASE_STATION_NAME_PLACEHOLDER } from "../constants/baseStation";
 import { formatLastSeen } from "../utils/formatLastSeen";
+import { isDeviceOnline } from "../utils/deviceOnline";
 
 function onlineChip(lastSeen: string | null) {
-  const online =
-    lastSeen != null && Date.now() - new Date(lastSeen).getTime() < 300_000;
+  const online = isDeviceOnline(lastSeen);
   return (
-    <Chip size="small" label={online ? "В сети" : "Офлайн"} color={online ? "success" : "default"} />
+    <Tooltip title={formatLastSeen(lastSeen)}>
+      <Chip size="small" label={online ? "В сети" : "Офлайн"} color={online ? "success" : "default"} />
+    </Tooltip>
   );
 }
 

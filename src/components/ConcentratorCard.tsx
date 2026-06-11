@@ -44,7 +44,7 @@ export function ConcentratorCard({ item, apiaryId, onEdit }: Props) {
               Прошивка: {item.firmware_version}
             </Typography>
           )}
-          <DeviceStatusIndicators recentTelemetry={item.recent_telemetry} />
+          <DeviceStatusIndicators recentTelemetry={item.recent_telemetry} iconsOnly />
         </CardContent>
       </Card>
     </Box>

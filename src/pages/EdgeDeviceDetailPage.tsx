@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -21,8 +20,8 @@ import "dayjs/locale/ru";
 import { useMemo } from "react";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import { api } from "../api";
+import { DetailStickyHeader } from "../components/DetailStickyHeader";
 import { DeviceStatusCharts } from "../components/DeviceStatusCharts";
-import { ObjectCardHeader } from "../components/ObjectCardHeader";
 import { PeriodSelector } from "../components/PeriodSelector";
 import { TelemetryChart } from "../components/TelemetryChart";
 import { useLocalTelemetryPeriod } from "../hooks/useLocalTelemetryPeriod";
@@ -30,6 +29,7 @@ import { formatDateTime } from "../utils/formatDateTime";
 import { formatLastSeen } from "../utils/formatLastSeen";
 import { formatTelemetryValue } from "../utils/formatTelemetryValue";
 import { metricLabel } from "../utils/metricLabels";
+import { formatTelemetrySlot, formatWakeInterval } from "../utils/edgeTiming";
 import { pivotTelemetryByTime, pointsToSingleSeries } from "../utils/telemetry";
 
 function ParamRow({ label, value }: { label: string; value: ReactNode }) {
@@ -114,10 +114,10 @@ export function EdgeDeviceDetailPage() {
   });
 
   const batteryQuery = useQuery({
-    queryKey: ["edge-device-telemetry", deviceId, "battery_percent", fromIso, toIso],
+    queryKey: ["edge-device-telemetry", deviceId, "battery_voltage", fromIso, toIso],
     queryFn: () =>
       api.edgeDeviceTelemetry(deviceId, {
-        metric: "battery_percent",
+        metric: "battery_voltage",
         from: fromIso,
         to: toIso,
         limit: 5000,
@@ -157,22 +157,26 @@ export function EdgeDeviceDetailPage() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru">
-      <Button component={RouterLink} to={backToConc} startIcon={<ArrowBackIcon />} sx={{ mb: 2 }}>
-        К базовой станции
-      </Button>
+      <DetailStickyHeader
+        backTo={backToConc}
+        backLabel="К базовой станции"
+        title={title}
+        lastSeenAt={d.last_seen_at}
+        wakeIntervalSec={d.wake_interval_sec ?? 3600}
+        recentTelemetry={[
+          ...(signalQuery.data ?? []),
+          ...(batteryQuery.data ?? []),
+          ...(d.recent_telemetry ?? []),
+        ]}
+        secondaryActions={[{ label: "Перепрошить", to: flashUrl, variant: "outlined" }]}
+        primaryAction={{
+          label: "Редактировать",
+          to: `/devices/edge/${d.id}/edit`,
+          variant: "contained",
+        }}
+      />
 
       <Box sx={{ mb: 3 }}>
-        <ObjectCardHeader
-          title={title}
-          titleVariant="h5"
-          lastSeenAt={d.last_seen_at}
-          secondaryActions={[{ label: "Перепрошить", to: flashUrl, variant: "outlined" }]}
-          primaryAction={{
-            label: "Редактировать",
-            to: `/devices/edge/${d.id}/edit`,
-            variant: "contained",
-          }}
-        />
         <Card variant="outlined">
           <CardContent>
             <Grid container spacing={2}>
@@ -185,6 +189,26 @@ export function EdgeDeviceDetailPage() {
               }
             />
             <ParamRow label="Прошивка" value={d.firmware_version ?? "—"} />
+            <ParamRow
+              label="Интервал замера"
+              value={
+                d.wake_interval_sec != null
+                  ? formatWakeInterval(d.wake_interval_sec)
+                  : "—"
+              }
+            />
+            <ParamRow
+              label="TDMA-слот"
+              value={formatTelemetrySlot(d.telemetry_slot_sec, d.wake_interval_sec)}
+            />
+            <ParamRow
+              label="Wi‑Fi канал"
+              value={
+                concentrator.data?.wifi_channel != null
+                  ? String(concentrator.data.wifi_channel)
+                  : "—"
+              }
+            />
             <ParamRow label="Последний контакт" value={formatLastSeen(d.last_seen_at)} />
             <ParamRow
               label="Базовая станция"
@@ -244,6 +268,7 @@ export function EdgeDeviceDetailPage() {
               unit="°C"
               periodFrom={fromIso}
               periodTo={toIso}
+              wakeIntervalSec={d.wake_interval_sec ?? 3600}
             />
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
@@ -256,6 +281,7 @@ export function EdgeDeviceDetailPage() {
               color="#5D4037"
               periodFrom={fromIso}
               periodTo={toIso}
+              wakeIntervalSec={d.wake_interval_sec ?? 3600}
             />
           </Grid>
         </Grid>
@@ -270,6 +296,7 @@ export function EdgeDeviceDetailPage() {
         loading={signalQuery.isLoading || batteryQuery.isLoading}
         periodFrom={fromIso}
         periodTo={toIso}
+        wakeIntervalSec={d.wake_interval_sec ?? 3600}
       />
 
       <Typography variant="h6" gutterBottom>

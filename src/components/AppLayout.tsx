@@ -2,7 +2,7 @@ import HiveIcon from "@mui/icons-material/Hive";
 import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import YardIcon from "@mui/icons-material/Yard";
-import GroupsIcon from "@mui/icons-material/Groups";
+import { ColonyIcon } from "../constants/colonyIcon";
 import DevicesIcon from "@mui/icons-material/Devices";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import TerminalIcon from "@mui/icons-material/Terminal";
@@ -20,17 +20,32 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, type NavLinkProps } from "react-router-dom";
 import { api, setToken } from "../api";
 
 const drawerWidth = 240;
 
-const navItems = [
-  { to: "/", label: "Главная", icon: <DashboardIcon /> },
+type NavItem = {
+  to: string;
+  label: string;
+  icon: React.ReactNode;
+  end?: boolean;
+  isActive?: NavLinkProps["isActive"];
+};
+
+function isDevicesNavActive({ pathname }: { pathname: string }) {
+  return (
+    pathname === "/devices" ||
+    (pathname.startsWith("/devices/") && !pathname.startsWith("/devices/monitor"))
+  );
+}
+
+const navItems: NavItem[] = [
+  { to: "/", label: "Главная", icon: <DashboardIcon />, end: true },
   { to: "/apiaries", label: "Пасеки", icon: <YardIcon /> },
-  { to: "/colonies", label: "Семьи", icon: <GroupsIcon /> },
-  { to: "/devices", label: "Устройства", icon: <DevicesIcon /> },
-  { to: "/devices/monitor", label: "Монитор порта", icon: <TerminalIcon /> },
+  { to: "/colonies", label: "Семьи", icon: <ColonyIcon /> },
+  { to: "/devices", label: "Устройства", icon: <DevicesIcon />, isActive: isDevicesNavActive },
+  { to: "/devices/monitor", label: "Монитор порта", icon: <TerminalIcon />, end: true },
   { to: "/telemetry", label: "Телеметрия", icon: <ShowChartIcon /> },
 ];
 
@@ -54,7 +69,8 @@ export function AppLayout() {
             key={item.to}
             component={NavLink}
             to={item.to}
-            end={item.to === "/"}
+            end={item.end ?? false}
+            {...(item.isActive ? { isActive: item.isActive } : {})}
             onClick={() => setMobileOpen(false)}
             sx={{
               "&.active": {

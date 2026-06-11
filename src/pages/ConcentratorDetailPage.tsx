@@ -1,5 +1,4 @@
 import AddIcon from "@mui/icons-material/Add";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -20,6 +19,7 @@ import { useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { ConcentratorDetailHeader } from "../components/ConcentratorDetailHeader";
+import { DetailStickyHeader } from "../components/DetailStickyHeader";
 import { DeviceStatusDetails } from "../components/DeviceStatusDetails";
 import { useLocalTelemetryPeriod } from "../hooks/useLocalTelemetryPeriod";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -68,10 +68,10 @@ export function ConcentratorDetailPage() {
   });
 
   const batteryQuery = useQuery({
-    queryKey: ["concentrator-telemetry", concentratorId, "battery_percent", fromIso, toIso],
+    queryKey: ["concentrator-telemetry", concentratorId, "battery_voltage", fromIso, toIso],
     queryFn: () =>
       api.concentratorTelemetry(concentratorId, {
-        metric: "battery_percent",
+        metric: "battery_voltage",
         from: fromIso,
         to: toIso,
         limit: 5000,
@@ -101,6 +101,8 @@ export function ConcentratorDetailPage() {
   const [deviceDialogOpen, setDeviceDialogOpen] = useState(false);
   const [deviceName, setDeviceName] = useState("");
   const [colonyId, setColonyId] = useState<number | "">("");
+  const [wakeBulkOpen, setWakeBulkOpen] = useState(false);
+  const [bulkWakeInterval, setBulkWakeInterval] = useState(3600);
 
   const openEditName = () => {
     if (!concentrator.data) return;
@@ -134,6 +136,16 @@ export function ConcentratorDetailPage() {
     setColonyId("");
     setDeviceDialogOpen(true);
   };
+
+  const saveBulkWake = useMutation({
+    mutationFn: () => api.bulkSetEdgeWakeInterval(concentratorId, bulkWakeInterval),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["edge-devices", "concentrator", concentratorId] });
+      setWakeBulkOpen(false);
+      showSuccess(`Интервал обновлён для ${result.updated} устройств`);
+    },
+    onError: (e) => showError(e instanceof Error ? e.message : "Ошибка"),
+  });
 
   const saveDevice = useMutation({
     mutationFn: async () => {
@@ -171,16 +183,22 @@ export function ConcentratorDetailPage() {
   }
 
   const conc = concentrator.data;
+  const flashUrl = `/devices/install/gateway?concentrator_id=${conc.id}&apiary_id=${conc.apiary_id}`;
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru">
-      <Button component={RouterLink} to="/devices" startIcon={<ArrowBackIcon />} sx={{ mb: 2 }}>
-        К списку базовых станций
-      </Button>
+      <DetailStickyHeader
+        backTo="/devices"
+        backLabel="К списку базовых станций"
+        title={conc.name}
+        lastSeenAt={conc.last_seen_at}
+        recentTelemetry={conc.recent_telemetry}
+        secondaryActions={[{ label: "Перепрошить", to: flashUrl, variant: "outlined" }]}
+        primaryAction={{ label: "Редактировать", onClick: openEditName, variant: "contained" }}
+      />
 
       <ConcentratorDetailHeader
         item={conc}
-        onEdit={openEditName}
         statusExpanded={statusExpanded}
         onStatusToggle={() => setStatusExpanded((v) => !v)}
         statusDetails={
@@ -199,11 +217,21 @@ export function ConcentratorDetailPage() {
         }
       />
 
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2, gap: 1, flexWrap: "wrap" }}>
         <Typography variant="h6">Подключенные устройства</Typography>
-        <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={openCreateDevice}>
-          Добавить
-        </Button>
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          <Button
+            variant="outlined"
+            size="small"
+            disabled={(edgeDevices.data ?? []).length === 0}
+            onClick={() => setWakeBulkOpen(true)}
+          >
+            Интервал замера для всех
+          </Button>
+          <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={openCreateDevice}>
+            Добавить
+          </Button>
+        </Box>
       </Box>
 
       {edgeDevices.isError ? (
@@ -295,6 +323,28 @@ export function ConcentratorDetailPage() {
             ))}
           </Select>
         </FormControl>
+      </FormDialog>
+
+      <FormDialog
+        open={wakeBulkOpen}
+        title="Интервал замера для всех устройств"
+        onClose={() => setWakeBulkOpen(false)}
+        onSubmit={() => saveBulkWake.mutate()}
+        submitting={saveBulkWake.isPending}
+        submitDisabled={bulkWakeInterval < 10 || bulkWakeInterval > 86400}
+        maxWidth="sm"
+      >
+        <TextField
+          autoFocus
+          fullWidth
+          label="Интервал замера (сек)"
+          type="number"
+          margin="normal"
+          value={bulkWakeInterval}
+          onChange={(e) => setBulkWakeInterval(Number(e.target.value))}
+          inputProps={{ min: 10, max: 86400, step: 1 }}
+          helperText="Применится ко всем устройствам этой базовой станции через gateway при следующем контакте."
+        />
       </FormDialog>
 
       <ConfirmDialog

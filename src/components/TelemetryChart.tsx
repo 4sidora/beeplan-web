@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import {
   CHART_COLORS,
-  DATA_GAP_FILL,
+  DATA_GAP_AREA_PROPS,
   findDataGaps,
   formatChartLabel,
   insertGapBreaks,
@@ -25,6 +25,8 @@ import {
 type PeriodProps = {
   periodFrom?: string | number;
   periodTo?: string | number;
+  /** Интервал замера устройства (wake_interval_sec), секунды. */
+  wakeIntervalSec?: number | null;
 };
 
 type SingleProps = PeriodProps & {
@@ -51,15 +53,20 @@ function useChartGaps(
   data: Record<string, string | number>[],
   periodFrom?: string | number,
   periodTo?: string | number,
+  wakeIntervalSec?: number | null,
 ) {
   return useMemo(() => {
     const { periodFromMs, periodToMs } = resolvePeriodBounds(periodFrom, periodTo);
     const points = data
       .filter((row) => typeof row.ts === "number")
       .map((row) => ({ ts: row.ts as number }));
-    const gaps = findDataGaps(points, { periodFrom: periodFromMs, periodTo: periodToMs });
+    const gaps = findDataGaps(points, {
+      periodFrom: periodFromMs,
+      periodTo: periodToMs,
+      expectedIntervalSec: wakeIntervalSec,
+    });
     return { gaps, periodFromMs, periodToMs };
-  }, [data, periodFrom, periodTo]);
+  }, [data, periodFrom, periodTo, wakeIntervalSec]);
 }
 
 function useXDomain(
@@ -81,9 +88,9 @@ function useXDomain(
 }
 
 export function TelemetryChart(props: Props) {
-  const { title, data, periodFrom, periodTo } = props;
+  const { title, data, periodFrom, periodTo, wakeIntervalSec } = props;
   const chartHeight = props.height ?? 280;
-  const { gaps, periodFromMs, periodToMs } = useChartGaps(data, periodFrom, periodTo);
+  const { gaps, periodFromMs, periodToMs } = useChartGaps(data, periodFrom, periodTo, wakeIntervalSec);
 
   const chartData = useMemo(() => {
     if (props.variant === "single") {
@@ -115,9 +122,7 @@ export function TelemetryChart(props: Props) {
                   key={`${gap.fromTs}-${gap.toTs}`}
                   x1={gap.fromTs}
                   x2={gap.toTs}
-                  fill={DATA_GAP_FILL}
-                  strokeOpacity={0}
-                  ifOverflow="extendDomain"
+                  {...DATA_GAP_AREA_PROPS}
                 />
               ))}
               <XAxis

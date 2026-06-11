@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import FormControl from "@mui/material/FormControl";
+import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import FormLabel from "@mui/material/FormLabel";
 import Paper from "@mui/material/Paper";
@@ -49,6 +50,7 @@ export function EdgeInstallPage() {
   const [activeStep, setActiveStep] = useState(0);
   const [productType, setProductType] = useState<EdgeProductTypeId>("multisensor");
   const [wakeInterval, setWakeInterval] = useState(3600);
+  const [debugSerial, setDebugSerial] = useState(true);
   const [board, setBoard] = useState<FirmwareBoardId>("ttgo-t-energy");
   const [build, setBuild] = useState<FirmwareBuild | null>(null);
   const [polling, setPolling] = useState(false);
@@ -76,6 +78,12 @@ export function EdgeInstallPage() {
     }
   }, [concentrator.data?.apiary_id, setApiaryId]);
 
+  useEffect(() => {
+    if (device.data?.wake_interval_sec != null) {
+      setWakeInterval(device.data.wake_interval_sec);
+    }
+  }, [device.data?.wake_interval_sec]);
+
   const gatewayReady = Boolean(concentrator.data?.gateway_mac);
   const channelReady = concentrator.data?.wifi_channel != null;
 
@@ -87,6 +95,7 @@ export function EdgeInstallPage() {
         concentrator_id: concentratorId!,
         edge_device_id: edgeDeviceId!,
         wake_interval_sec: wakeInterval,
+        debug_serial: debugSerial,
       }),
     onSuccess: (result) => {
       setBuild(result);
@@ -313,6 +322,12 @@ export function EdgeInstallPage() {
               fullWidth
               InputProps={{ readOnly: true }}
             />
+            <FormControlLabel
+              control={
+                <Checkbox checked={debugSerial} onChange={(e) => setDebugSerial(e.target.checked)} />
+              }
+              label="Отладочный UART-лог (рекомендуется при настройке)"
+            />
             <Box sx={{ display: "flex", gap: 1 }}>
               <Button onClick={() => setActiveStep(1)}>Назад</Button>
               <Button
@@ -354,7 +369,23 @@ export function EdgeInstallPage() {
         {activeStep === 4 && build?.status === "ready" && build.manifest_url && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <Alert severity="success">
-              Прошивка готова. Подключите ESP32 и нажмите кнопку ниже.
+              Прошивка готова. Подключите устройство по USB (Chrome/Edge на ПК).
+            </Alert>
+            <Alert severity="warning">
+              Edge уходит в deep sleep через несколько секунд после пробуждения — WebSerial
+              не успеет подключиться без подготовки. Перед INSTALL:
+              <Box component="ol" sx={{ mt: 1, mb: 0, pl: 2.5 }}>
+                <li>Закройте монитор порта на других вкладках (тот же COM-порт).</li>
+                <li>Отключите другие ESP по USB — оставьте только это устройство.</li>
+                <li>
+                  Зажмите <strong>BOOT</strong> (PRG), нажмите <strong>RST</strong>, отпустите RST.
+                </li>
+                <li>
+                  Не отпуская BOOT, нажмите INSTALL и выберите COM-порт; отпустите BOOT, когда
+                  появится «Preparing installation…».
+                </li>
+              </Box>
+              На T-Energy: переключатель BAT — ON, кабель с передачей данных (не только зарядка).
             </Alert>
             <EspWebInstallButton manifestUrl={build.manifest_url} />
             <Alert severity="info">

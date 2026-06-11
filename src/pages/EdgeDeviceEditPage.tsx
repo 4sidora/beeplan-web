@@ -9,6 +9,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Select from "@mui/material/Select";
 import TextField from "@mui/material/TextField";
+import Alert from "@mui/material/Alert";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -17,6 +18,7 @@ import { api } from "../api";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PageHeader } from "../components/PageHeader";
 import { useSnackbar } from "../components/SnackbarProvider";
+import { formatWakeInterval } from "../utils/edgeTiming";
 
 export function EdgeDeviceEditPage() {
   const { deviceId: rawId } = useParams();
@@ -47,12 +49,14 @@ export function EdgeDeviceEditPage() {
 
   const [deviceName, setDeviceName] = useState("");
   const [colonyId, setColonyId] = useState<number | "">("");
+  const [wakeInterval, setWakeInterval] = useState(3600);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (!device.data) return;
     setDeviceName(device.data.name ?? "");
     setColonyId(device.data.current_colony_id ?? "");
+    setWakeInterval(device.data.wake_interval_sec ?? 3600);
   }, [device.data]);
 
   const save = useMutation({
@@ -60,6 +64,7 @@ export function EdgeDeviceEditPage() {
       const targetColonyId = colonyId === "" ? null : Number(colonyId);
       await api.updateEdgeDevice(deviceId, {
         name: deviceName.trim() || null,
+        wake_interval_sec: wakeInterval,
       });
       if (device.data && targetColonyId !== device.data.current_colony_id) {
         await api.setDeviceColony(deviceId, targetColonyId);
@@ -134,6 +139,19 @@ export function EdgeDeviceEditPage() {
           value={deviceName}
           onChange={(e) => setDeviceName(e.target.value)}
         />
+        <TextField
+          fullWidth
+          margin="normal"
+          label="Интервал замера (сек)"
+          type="number"
+          value={wakeInterval}
+          onChange={(e) => setWakeInterval(Number(e.target.value))}
+          inputProps={{ min: 10, max: 86400, step: 1 }}
+          helperText={`Сейчас в БД: ${formatWakeInterval(d.wake_interval_sec)}. Новое значение дойдёт до устройства через базовую станцию при следующем контакте.`}
+        />
+        <Alert severity="info" sx={{ mt: 1 }}>
+          Перепрошивка не нужна — gateway передаст интервал в ACK при следующей отправке телеметрии.
+        </Alert>
         <FormControl fullWidth margin="normal">
           <InputLabel id="colony-label">Семья</InputLabel>
           <Select

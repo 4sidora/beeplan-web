@@ -10,8 +10,10 @@ import { formatDateTime } from "../utils/formatDateTime";
 import {
   batteryPercentFromValue,
   batteryStatusLevel,
-  formatBatteryPercent,
+  batteryVoltsFromValue,
+  formatBatteryStatus,
   formatSignalDbm,
+  latestBatteryPoint,
   latestMetricPoint,
   signalDbmFromValue,
   signalStatusLevel,
@@ -21,9 +23,11 @@ import {
 type Props = {
   recentTelemetry?: TelemetryPoint[];
   signalDbm?: number | null;
-  batteryPercent?: number | null;
+  batteryVolts?: number | null;
   signalTs?: string | null;
   batteryTs?: string | null;
+  /** Только иконки; значения — в подсказке без даты. */
+  iconsOnly?: boolean;
 };
 
 function BatteryIcon({ percent }: { percent: number }) {
@@ -35,17 +39,31 @@ function BatteryIcon({ percent }: { percent: number }) {
 export function DeviceStatusIndicators({
   recentTelemetry,
   signalDbm: signalProp,
-  batteryPercent: batteryProp,
+  batteryVolts: batteryVoltsProp,
   signalTs: signalTsProp,
   batteryTs: batteryTsProp,
+  iconsOnly = false,
 }: Props) {
   const signalPoint = latestMetricPoint(recentTelemetry, "signal_level");
-  const batteryPoint = latestMetricPoint(recentTelemetry, "battery_percent");
+  const batteryPoint = latestBatteryPoint(recentTelemetry);
 
   const signalDbm =
     signalProp ?? (signalPoint ? signalDbmFromValue(signalPoint.value) : null);
+  const batteryVolts =
+    batteryVoltsProp ??
+    (batteryPoint ? batteryVoltsFromValue(batteryPoint.value) : null);
   const batteryPercent =
-    batteryProp ?? (batteryPoint ? batteryPercentFromValue(batteryPoint.value) : null);
+    batteryVolts != null
+      ? batteryPercentFromValue({ volts: batteryVolts }, "battery_voltage")
+      : batteryPoint
+        ? batteryPercentFromValue(batteryPoint.value, batteryPoint.metric)
+        : null;
+  const batteryLabel =
+    batteryVolts != null
+      ? formatBatteryStatus({ volts: batteryVolts }, "battery_voltage")
+      : batteryPoint
+        ? formatBatteryStatus(batteryPoint.value, batteryPoint.metric)
+        : null;
   const signalTs = signalTsProp ?? signalPoint?.ts ?? null;
   const batteryTs = batteryTsProp ?? batteryPoint?.ts ?? null;
 
@@ -54,38 +72,74 @@ export function DeviceStatusIndicators({
   }
 
   return (
-    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, alignItems: "center" }}>
-      {signalDbm != null && (
-        <Tooltip title={`Сигнал · ${formatDateTime(signalTs)}`}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <SignalCellularAltIcon
-              fontSize="small"
-              sx={{ color: statusColor(signalStatusLevel(signalDbm)) }}
-            />
-            <Typography
-              variant="body2"
-              sx={{ color: statusColor(signalStatusLevel(signalDbm)), fontWeight: 600 }}
+    <Box
+      sx={{
+        display: "flex",
+        flexWrap: iconsOnly ? "nowrap" : "wrap",
+        gap: iconsOnly ? 0.5 : 1.5,
+        alignItems: "center",
+      }}
+    >
+      {signalDbm != null &&
+        (iconsOnly ? (
+          <Tooltip title={formatSignalDbm(signalDbm)}>
+            <Box
+              component="span"
+              sx={{
+                display: "inline-flex",
+                color: statusColor(signalStatusLevel(signalDbm)),
+                lineHeight: 0,
+              }}
             >
-              {formatSignalDbm(signalDbm)}
-            </Typography>
-          </Box>
-        </Tooltip>
-      )}
-      {batteryPercent != null && (
-        <Tooltip title={`Батарея · ${formatDateTime(batteryTs)}`}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Box sx={{ color: statusColor(batteryStatusLevel(batteryPercent)), display: "flex" }}>
+              <SignalCellularAltIcon fontSize="small" />
+            </Box>
+          </Tooltip>
+        ) : (
+          <Tooltip title={`Сигнал · ${formatDateTime(signalTs)}`}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <SignalCellularAltIcon
+                fontSize="small"
+                sx={{ color: statusColor(signalStatusLevel(signalDbm)) }}
+              />
+              <Typography
+                variant="body2"
+                sx={{ color: statusColor(signalStatusLevel(signalDbm)), fontWeight: 600 }}
+              >
+                {formatSignalDbm(signalDbm)}
+              </Typography>
+            </Box>
+          </Tooltip>
+        ))}
+      {batteryPercent != null &&
+        batteryLabel != null &&
+        (iconsOnly ? (
+          <Tooltip title={batteryLabel}>
+            <Box
+              component="span"
+              sx={{
+                display: "inline-flex",
+                color: statusColor(batteryStatusLevel(batteryPercent)),
+                lineHeight: 0,
+              }}
+            >
               <BatteryIcon percent={batteryPercent} />
             </Box>
-            <Typography
-              variant="body2"
-              sx={{ color: statusColor(batteryStatusLevel(batteryPercent)), fontWeight: 600 }}
-            >
-              {formatBatteryPercent(batteryPercent)}
-            </Typography>
-          </Box>
-        </Tooltip>
-      )}
+          </Tooltip>
+        ) : (
+          <Tooltip title={`Батарея · ${formatDateTime(batteryTs)}`}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <Box sx={{ color: statusColor(batteryStatusLevel(batteryPercent)), display: "flex" }}>
+                <BatteryIcon percent={batteryPercent} />
+              </Box>
+              <Typography
+                variant="body2"
+                sx={{ color: statusColor(batteryStatusLevel(batteryPercent)), fontWeight: 600 }}
+              >
+                {batteryLabel}
+              </Typography>
+            </Box>
+          </Tooltip>
+        ))}
     </Box>
   );
 }

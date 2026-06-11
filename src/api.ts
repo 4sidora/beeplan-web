@@ -97,6 +97,7 @@ export type EdgeDevice = {
   public_id: string;
   name: string | null;
   telemetry_slot_sec: number | null;
+  wake_interval_sec: number | null;
   current_colony_id: number | null;
   last_seen_at: string | null;
   firmware_version: string | null;
@@ -319,12 +320,21 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
-  updateEdgeDevice: (id: number, body: { name?: string | null }) =>
+  updateEdgeDevice: (id: number, body: { name?: string | null; wake_interval_sec?: number }) =>
     apiFetch<EdgeDevice>(`/v1/edge-devices/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
+  bulkSetEdgeWakeInterval: (concentratorId: number, wake_interval_sec: number) =>
+    apiFetch<{ updated: number }>(
+      `/v1/concentrators/${encodeURIComponent(String(concentratorId))}/edge-devices/wake-interval`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wake_interval_sec }),
+      },
+    ),
   deleteEdgeDevice: (id: number) =>
     apiFetch<void>(`/v1/edge-devices/${id}`, { method: "DELETE" }),
   setDeviceColony: (deviceId: number, colonyId: number | null) =>
@@ -348,6 +358,7 @@ export const api = {
     wifi_password?: string;
     api_base_url?: string;
     wake_interval_sec?: number;
+    debug_serial?: boolean;
   }) =>
     apiFetch<FirmwareBuild>("/v1/firmware/builds", {
       method: "POST",

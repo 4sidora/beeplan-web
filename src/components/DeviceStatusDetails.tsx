@@ -18,6 +18,7 @@ type Props = {
   to: Dayjs;
   onFromChange: (v: Dayjs) => void;
   onToChange: (v: Dayjs) => void;
+  wakeIntervalSec?: number | null;
 };
 
 export function DeviceStatusDetails({
@@ -32,6 +33,7 @@ export function DeviceStatusDetails({
   to,
   onFromChange,
   onToChange,
+  wakeIntervalSec,
 }: Props) {
   return (
     <Box sx={{ mt: 2 }}>
@@ -56,6 +58,7 @@ export function DeviceStatusDetails({
         compact={compact}
         periodFrom={from.toISOString()}
         periodTo={to.toISOString()}
+        wakeIntervalSec={wakeIntervalSec}
       />
     </Box>
   );
