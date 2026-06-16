@@ -24,12 +24,35 @@ function handleSessionExpired(): void {
   window.location.replace("/login");
 }
 
-async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function apiFetch<T>(path: string, init: RequestInit = {}, timeoutMs = 45_000): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  const res = await fetch(`${base}${path}`, { ...init, headers });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const onAbort = () => controller.abort();
+  if (init.signal) {
+    if (init.signal.aborted) controller.abort();
+    else init.signal.addEventListener("abort", onAbort, { once: true });
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${base}${path}`, { ...init, headers, signal: controller.signal });
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") {
+      throw new Error(
+        "Сервер не отвечает. Проверьте API (http://localhost:8000) и перезапустите Docker при зависании.",
+      );
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeout);
+    init.signal?.removeEventListener("abort", onAbort);
+  }
+
   const text = await res.text();
   if (!res.ok) {
     if (res.status === 401 && path !== "/v1/auth/token") {
@@ -306,6 +329,8 @@ export const api = {
   edgeDevicesByConcentrator: (concentratorId: number) =>
     fetchEdgeDevicesByConcentrator(concentratorId),
   edgeDevice: (id: number) => apiFetch<EdgeDevice>(`/v1/edge-devices/${id}`),
+  ensureEdgeTelemetrySlot: (id: number) =>
+    apiFetch<EdgeDevice>(`/v1/edge-devices/${id}/ensure-telemetry-slot`, { method: "POST" }),
   edgeDeviceTelemetry: (deviceId: number, params?: TelemetryParams) =>
     apiFetch<TelemetryPoint[]>(
       `/v1/edge-devices/${encodeURIComponent(String(deviceId))}/telemetry${telemetryQuery(params)}`,

@@ -2,20 +2,16 @@ import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-import FormControl from "@mui/material/FormControl";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
-import FormLabel from "@mui/material/FormLabel";
 import Paper from "@mui/material/Paper";
-import Radio from "@mui/material/Radio";
-import RadioGroup from "@mui/material/RadioGroup";
 import Step from "@mui/material/Step";
 import StepLabel from "@mui/material/StepLabel";
 import Stepper from "@mui/material/Stepper";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { api, type FirmwareBuild } from "../api";
 import { EspWebInstallButton, isWebSerialSupported } from "../components/EspWebInstallButton";
@@ -23,10 +19,11 @@ import { FirmwareBuildProgress } from "../components/FirmwareBuildProgress";
 import { FirmwareVersionInfo } from "../components/FirmwareVersionInfo";
 import { PageHeader } from "../components/PageHeader";
 import { useSnackbar } from "../components/SnackbarProvider";
+import { EdgeProductTypePicker } from "../components/EdgeProductTypePicker";
 import { FirmwareBoardPicker } from "../components/FirmwareBoardPicker";
 import type { FirmwareBoardId } from "../constants/boards";
+import { boardById, defaultBoardForProfile } from "../constants/boards";
 import {
-  EDGE_PRODUCT_TYPES,
   type EdgeProductTypeId,
   edgeProductTypeById,
 } from "../constants/edgeProductTypes";
@@ -51,12 +48,14 @@ export function EdgeInstallPage() {
   const [productType, setProductType] = useState<EdgeProductTypeId>("multisensor");
   const [wakeInterval, setWakeInterval] = useState(3600);
   const [debugSerial, setDebugSerial] = useState(true);
-  const [board, setBoard] = useState<FirmwareBoardId>("ttgo-t-energy");
+  const [board, setBoard] = useState<FirmwareBoardId>(() => defaultBoardForProfile("edge"));
   const [build, setBuild] = useState<FirmwareBuild | null>(null);
   const [polling, setPolling] = useState(false);
 
   const selectedProduct = edgeProductTypeById(productType);
   const firmwareReady = selectedProduct?.firmwareAvailable ?? false;
+  const selectedBoard = boardById(board);
+  const boardReady = selectedBoard?.firmwareAvailable ?? false;
 
   const device = useQuery({
     queryKey: ["edge-device", edgeDeviceId],
@@ -86,6 +85,35 @@ export function EdgeInstallPage() {
 
   const gatewayReady = Boolean(concentrator.data?.gateway_mac);
   const channelReady = concentrator.data?.wifi_channel != null;
+  const slotEnsureAttempted = useRef(false);
+
+  const ensureTelemetrySlot = useMutation({
+    mutationFn: () => api.ensureEdgeTelemetrySlot(edgeDeviceId!),
+    onSuccess: () => device.refetch(),
+    onError: (e: Error) => showError(e.message),
+  });
+
+  useEffect(() => {
+    if (activeStep !== 2) {
+      slotEnsureAttempted.current = false;
+      return;
+    }
+    if (edgeDeviceId == null || device.isLoading || device.data?.telemetry_slot_sec != null) {
+      return;
+    }
+    if (slotEnsureAttempted.current || ensureTelemetrySlot.isPending) {
+      return;
+    }
+    slotEnsureAttempted.current = true;
+    ensureTelemetrySlot.mutate();
+  }, [
+    activeStep,
+    edgeDeviceId,
+    device.isLoading,
+    device.data?.telemetry_slot_sec,
+    ensureTelemetrySlot.isPending,
+    ensureTelemetrySlot,
+  ]);
 
   const startBuild = useMutation({
     mutationFn: () =>
@@ -211,30 +239,14 @@ export function EdgeInstallPage() {
         ))}
       </Stepper>
 
-      <Paper sx={{ p: 3, maxWidth: activeStep === 1 ? 960 : 640 }}>
+      <Paper sx={{ p: 3, maxWidth: activeStep === 1 ? 1040 : activeStep === 0 ? 720 : 640 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>
           {deviceTitle}
         </Typography>
 
         {activeStep === 0 && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <FormControl>
-              <FormLabel id="edge-product-type-label">Тип устройства</FormLabel>
-              <RadioGroup
-                aria-labelledby="edge-product-type-label"
-                value={productType}
-                onChange={(e) => setProductType(e.target.value as EdgeProductTypeId)}
-              >
-                {EDGE_PRODUCT_TYPES.map((t) => (
-                  <FormControlLabel
-                    key={t.id}
-                    value={t.id}
-                    control={<Radio />}
-                    label={t.label}
-                  />
-                ))}
-              </RadioGroup>
-            </FormControl>
+            <EdgeProductTypePicker value={productType} onChange={setProductType} />
 
             {firmwareReady ? (
               <FirmwareVersionInfo
@@ -252,15 +264,10 @@ export function EdgeInstallPage() {
                 >
                   Версия прошивки
                 </Typography>
-                <Typography variant="body2" sx={{ mb: 1.5 }}>
+                <Typography variant="body2">
                   Прошивка для «{selectedProduct?.label}» пока в разработке. Выберите другой тип
                   устройства, чтобы продолжить.
                 </Typography>
-                {selectedProduct?.capabilities ? (
-                  <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
-                    {selectedProduct.capabilities}
-                  </Typography>
-                ) : null}
               </Alert>
             )}
 
@@ -289,10 +296,21 @@ export function EdgeInstallPage() {
                 дождитесь heartbeat (канал появится после первого выхода в сеть).
               </Alert>
             )}
-            <FirmwareBoardPicker profile="edge" value={board} onChange={setBoard} />
+            <FirmwareBoardPicker
+              profile="edge"
+              value={board}
+              onChange={setBoard}
+              deviceType="edge"
+              installedVersion={edge.firmware_version}
+              showFirmwareVersion={false}
+            />
             <Box sx={{ display: "flex", gap: 1 }}>
               <Button onClick={() => setActiveStep(0)}>Назад</Button>
-              <Button variant="contained" disabled={!gatewayReady || !channelReady} onClick={() => setActiveStep(2)}>
+              <Button
+                variant="contained"
+                disabled={!gatewayReady || !channelReady || !boardReady}
+                onClick={() => setActiveStep(2)}
+              >
                 Далее
               </Button>
             </Box>
@@ -311,10 +329,14 @@ export function EdgeInstallPage() {
             />
             <TextField
               label="TDMA-слот (сек)"
-              value={edge.telemetry_slot_sec ?? "—"}
+              value={
+                ensureTelemetrySlot.isPending
+                  ? "…"
+                  : device.data?.telemetry_slot_sec ?? edge.telemetry_slot_sec ?? "—"
+              }
               fullWidth
               InputProps={{ readOnly: true }}
-              helperText="Смещение внутри часа; назначается при создании устройства"
+              helperText="Смещение внутри часа; назначается сервером автоматически"
             />
             <TextField
               label="Wi‑Fi канал базовой станции"

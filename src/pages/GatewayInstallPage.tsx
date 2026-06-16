@@ -4,7 +4,6 @@ import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
-import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Step from "@mui/material/Step";
 import StepLabel from "@mui/material/StepLabel";
@@ -17,10 +16,14 @@ import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { api, type FirmwareBuild } from "../api";
 import { EspWebInstallButton, isWebSerialSupported } from "../components/EspWebInstallButton";
 import { FirmwareBuildProgress } from "../components/FirmwareBuildProgress";
-import { FirmwareVersionInfo } from "../components/FirmwareVersionInfo";
 import { PageHeader } from "../components/PageHeader";
 import { useSnackbar } from "../components/SnackbarProvider";
-import { boardsForProfile, type FirmwareBoardId } from "../constants/boards";
+import { FirmwareBoardPicker } from "../components/FirmwareBoardPicker";
+import {
+  boardById,
+  defaultBoardForProfile,
+  type FirmwareBoardId,
+} from "../constants/boards";
 import { useApiaryParam } from "../hooks/useApiaryParam";
 
 const DEFAULT_DEVICE_API_URL = "http://192.168.1.42:8000";
@@ -51,7 +54,7 @@ export function GatewayInstallPage() {
   const [wifiSsid, setWifiSsid] = useState("");
   const [wifiPassword, setWifiPassword] = useState("");
   const [apiBaseUrl, setApiBaseUrl] = useState(deviceApiUrl);
-  const [board, setBoard] = useState<FirmwareBoardId>("esp32dev");
+  const [board, setBoard] = useState<FirmwareBoardId>(() => defaultBoardForProfile("gateway"));
   const [debugSerial, setDebugSerial] = useState(true);
   const [build, setBuild] = useState<FirmwareBuild | null>(null);
   const [polling, setPolling] = useState(false);
@@ -110,6 +113,8 @@ export function GatewayInstallPage() {
   }, [polling, build, showError]);
 
   const conc = concentrator.data;
+  const selectedBoard = boardById(board);
+  const boardReady = selectedBoard?.firmwareAvailable ?? false;
 
   if (concentratorId == null) {
     return (
@@ -177,32 +182,21 @@ export function GatewayInstallPage() {
         ))}
       </Stepper>
 
-      <Paper sx={{ p: 3, maxWidth: 640 }}>
+      <Paper sx={{ p: 3, maxWidth: activeStep === 0 ? 1040 : 640 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>
           {conc.name}
         </Typography>
 
         {activeStep === 0 && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <FirmwareVersionInfo
+            <FirmwareBoardPicker
+              profile="gateway"
+              value={board}
+              onChange={setBoard}
               deviceType="gateway"
               installedVersion={conc.firmware_version}
-              installOverview
             />
-            <TextField
-              select
-              label="Плата (MCU)"
-              value={board}
-              onChange={(e) => setBoard(e.target.value as FirmwareBoardId)}
-              fullWidth
-            >
-              {boardsForProfile("gateway").map((b) => (
-                <MenuItem key={b.id} value={b.id}>
-                  {b.label}
-                </MenuItem>
-              ))}
-            </TextField>
-            <Button variant="contained" onClick={() => setActiveStep(1)}>
+            <Button variant="contained" disabled={!boardReady} onClick={() => setActiveStep(1)}>
               Далее
             </Button>
           </Box>
