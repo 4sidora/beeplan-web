@@ -12,8 +12,8 @@ import { consumeReturnUrl, returnPathFromState } from "../utils/returnUrl";
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState("dev@example.com");
-  const [password, setPassword] = useState("devpassword");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const login = useMutation({
     mutationFn: () => api.login(email, password),
