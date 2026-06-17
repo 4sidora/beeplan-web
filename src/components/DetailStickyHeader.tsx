@@ -1,6 +1,5 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
-import SystemUpdateAltIcon from "@mui/icons-material/SystemUpdateAlt";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -15,17 +14,12 @@ import type { TelemetryPoint } from "../api";
 import { MAIN_PADDING_X, MAIN_PADDING_X_NEG } from "../constants/layout";
 import { formatLastSeen } from "../utils/formatLastSeen";
 import { isDeviceOnline } from "../utils/deviceOnline";
+import { DeviceOnlineDot } from "./DeviceOnlineDot";
 import { DeviceStatusIndicators } from "./DeviceStatusIndicators";
 import type { HeaderAction } from "./ObjectCardHeader";
 
 function HeaderButton({ action, compact }: { action: HeaderAction; compact?: boolean }) {
   if (compact) {
-    const icon =
-      action.variant === "contained" ? (
-        <EditIcon fontSize="small" />
-      ) : (
-        <SystemUpdateAltIcon fontSize="small" />
-      );
     if (action.to) {
       return (
         <Tooltip title={action.label}>
@@ -33,11 +27,11 @@ function HeaderButton({ action, compact }: { action: HeaderAction; compact?: boo
             component={RouterLink}
             to={action.to}
             size="small"
-            color={action.variant === "contained" ? "primary" : "default"}
+            color="primary"
             onClick={action.onClick}
             aria-label={action.label}
           >
-            {icon}
+            <EditIcon fontSize="small" />
           </IconButton>
         </Tooltip>
       );
@@ -46,11 +40,11 @@ function HeaderButton({ action, compact }: { action: HeaderAction; compact?: boo
       <Tooltip title={action.label}>
         <IconButton
           size="small"
-          color={action.variant === "contained" ? "primary" : "default"}
+          color="primary"
           onClick={action.onClick}
           aria-label={action.label}
         >
-          {icon}
+          <EditIcon fontSize="small" />
         </IconButton>
       </Tooltip>
     );
@@ -108,6 +102,7 @@ export function DetailStickyHeader({
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const online = isDeviceOnline(lastSeenAt, wakeIntervalSec);
   const contactTooltip = formatLastSeen(lastSeenAt);
+  const visibleSecondary = isMobile ? [] : secondaryActions;
 
   return (
     <Box
@@ -162,20 +157,28 @@ export function DetailStickyHeader({
         >
           {title}
         </Typography>
-        <Tooltip title={contactTooltip}>
-          <Chip
-            size="small"
-            label={online ? "В сети" : "Офлайн"}
-            color={online ? "success" : "default"}
-            sx={{
-              flexShrink: 0,
-              display: { xs: "none", sm: "flex" },
-            }}
-          />
-        </Tooltip>
-        <Box sx={{ flexShrink: 0, display: { xs: "none", md: "block" } }}>
-          <DeviceStatusIndicators recentTelemetry={recentTelemetry} iconsOnly />
-        </Box>
+        {isMobile ? (
+          <>
+            <DeviceOnlineDot lastSeenAt={lastSeenAt} wakeIntervalSec={wakeIntervalSec} />
+            <Box sx={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
+              <DeviceStatusIndicators recentTelemetry={recentTelemetry} iconsOnly />
+            </Box>
+          </>
+        ) : (
+          <>
+            <Tooltip title={contactTooltip}>
+              <Chip
+                size="small"
+                label={online ? "В сети" : "Офлайн"}
+                color={online ? "success" : "default"}
+                sx={{ flexShrink: 0 }}
+              />
+            </Tooltip>
+            <Box sx={{ flexShrink: 0 }}>
+              <DeviceStatusIndicators recentTelemetry={recentTelemetry} iconsOnly />
+            </Box>
+          </>
+        )}
       </Box>
 
       {trailing}
@@ -188,8 +191,8 @@ export function DetailStickyHeader({
           gap: 0.25,
         }}
       >
-        {secondaryActions.map((action) => (
-          <HeaderButton key={action.label} action={action} compact={isMobile} />
+        {visibleSecondary.map((action) => (
+          <HeaderButton key={action.label} action={action} compact={false} />
         ))}
         <HeaderButton action={primaryAction} compact={isMobile} />
       </Box>

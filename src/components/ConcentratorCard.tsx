@@ -1,52 +1,76 @@
-import Alert from "@mui/material/Alert";
+import DevicesIcon from "@mui/icons-material/Devices";
+import MemoryIcon from "@mui/icons-material/Memory";
+import YardIcon from "@mui/icons-material/Yard";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
+import CardActionArea from "@mui/material/CardActionArea";
 import CardContent from "@mui/material/CardContent";
+import Chip from "@mui/material/Chip";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import { Link as RouterLink } from "react-router-dom";
 import type { Concentrator } from "../api";
+import { DeviceOnlineDot } from "./DeviceOnlineDot";
 import { DeviceStatusIndicators } from "./DeviceStatusIndicators";
-import { ObjectCardHeader } from "./ObjectCardHeader";
 
 type Props = {
   item: Concentrator;
-  apiaryId: number | null;
-  onEdit: () => void;
+  apiaryLabel: string;
 };
 
-export function ConcentratorCard({ item, apiaryId, onEdit }: Props) {
-  const flashUrl = `/devices/install/gateway?concentrator_id=${item.id}${apiaryId != null ? `&apiary_id=${apiaryId}` : ""}`;
+export function ConcentratorCard({ item, apiaryLabel }: Props) {
+  const detailUrl = `/devices/${item.id}`;
+  const firmwareLabel = item.firmware_version ?? "—";
+  const deviceCount = item.edge_device_count ?? 0;
 
   return (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <ObjectCardHeader
-        title={item.name}
-        lastSeenAt={item.last_seen_at}
-        secondaryActions={[{ label: "Перепрошить", to: flashUrl, variant: "outlined" }]}
-        primaryAction={{ label: "Редактировать", onClick: onEdit, variant: "contained" }}
-      />
-      <Card variant="outlined" sx={{ flexGrow: 1 }}>
-        <CardContent>
-          <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12, mb: 0.5 }}>
-            MAC: {item.gateway_mac ?? "не зарегистрирован"}
-          </Typography>
-          {item.wifi_channel != null && (
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-              Wi‑Fi канал: {item.wifi_channel}
+    <Card variant="outlined" sx={{ height: "100%" }}>
+      <CardActionArea
+        component={RouterLink}
+        to={detailUrl}
+        sx={{
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "stretch",
+        }}
+      >
+        <CardContent sx={{ flexGrow: 1, width: "100%" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+              mb: 1.5,
+              minWidth: 0,
+              flexWrap: "nowrap",
+            }}
+          >
+            <Typography variant="h6" component="h2" noWrap sx={{ flex: 1, minWidth: 0 }}>
+              {item.name}
             </Typography>
-          )}
-          {(item.spool_pending_count ?? 0) > 0 && (
-            <Alert severity="warning" sx={{ py: 0, mb: 1 }}>
-              Очередь uplink: {item.spool_pending_count} записей
-            </Alert>
-          )}
-          {item.firmware_version && (
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Прошивка: {item.firmware_version}
-            </Typography>
-          )}
-          <DeviceStatusIndicators recentTelemetry={item.recent_telemetry} iconsOnly />
+            <DeviceOnlineDot lastSeenAt={item.last_seen_at} />
+            <DeviceStatusIndicators recentTelemetry={item.recent_telemetry} iconsOnly />
+          </Box>
+
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+            <Tooltip title={`Пасека: ${apiaryLabel}`}>
+              <Chip size="small" icon={<YardIcon />} label={apiaryLabel} variant="outlined" />
+            </Tooltip>
+            <Tooltip title={`Прошивка ${firmwareLabel}`}>
+              <Chip size="small" icon={<MemoryIcon />} label={firmwareLabel} variant="outlined" />
+            </Tooltip>
+            <Tooltip title="Подключённых устройств">
+              <Chip
+                size="small"
+                icon={<DevicesIcon />}
+                label={String(deviceCount)}
+                variant="outlined"
+              />
+            </Tooltip>
+          </Box>
         </CardContent>
-      </Card>
-    </Box>
+      </CardActionArea>
+    </Card>
   );
 }

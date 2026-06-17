@@ -2,64 +2,28 @@ import AddIcon from "@mui/icons-material/Add";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
-import Link from "@mui/material/Link";
-import Tooltip from "@mui/material/Tooltip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import FormControl from "@mui/material/FormControl";
+import Grid from "@mui/material/Grid";
 import InputAdornment from "@mui/material/InputAdornment";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
 import { api } from "../api";
+import { ConcentratorCard } from "../components/ConcentratorCard";
 import { PageHeader } from "../components/PageHeader";
-import { ResponsiveTable } from "../components/ResponsiveTable";
 import { useSnackbar } from "../components/SnackbarProvider";
 import { BASE_STATION_NAME_PLACEHOLDER } from "../constants/baseStation";
-import { formatLastSeen } from "../utils/formatLastSeen";
-import { isDeviceOnline } from "../utils/deviceOnline";
 import { toUserFacingError } from "../utils/userFacingError";
-
-function onlineChip(lastSeen: string | null) {
-  const online = isDeviceOnline(lastSeen);
-  return (
-    <Tooltip title={formatLastSeen(lastSeen)}>
-      <Chip
-        size="small"
-        label={online ? "В сети" : "Офлайн"}
-        color={online ? "success" : "default"}
-        sx={{ maxWidth: "100%", "& .MuiChip-label": { px: { xs: 0.75, sm: 1 }, fontSize: { xs: "0.7rem", sm: "0.8125rem" } } }}
-      />
-    </Tooltip>
-  );
-}
-
-const listTableSx = {
-  tableLayout: "fixed",
-  width: "100%",
-  "& .MuiTableCell-root": {
-    px: { xs: 0.5, sm: 1.5 },
-    py: { xs: 0.75, sm: 1 },
-    fontSize: { xs: "0.8rem", sm: "0.875rem" },
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
-} as const;
 
 export function DevicesPage() {
   const qc = useQueryClient();
@@ -108,6 +72,10 @@ export function DevicesPage() {
     onError: (e) => showError(e instanceof Error ? e.message : "Ошибка сохранения"),
   });
 
+  function apiaryLabel(apiaryId: number, apiaryName?: string | null) {
+    return apiaryName ?? apiaries.data?.find((a) => a.id === apiaryId)?.name ?? `#${apiaryId}`;
+  }
+
   return (
     <>
       <PageHeader title="Устройства">
@@ -129,70 +97,13 @@ export function DevicesPage() {
       ) : (concentrators.data ?? []).length === 0 ? (
         <Alert severity="info">Добавьте первую базовую станцию.</Alert>
       ) : (
-        <ResponsiveTable>
-          <Table size="small" sx={listTableSx}>
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ width: { xs: "36%", sm: "34%" } }}>Название</TableCell>
-                <TableCell sx={{ width: { xs: "24%", sm: "18%" } }}>Статус</TableCell>
-                <TableCell align="right" sx={{ width: { xs: "14%", sm: "14%" } }}>
-                  <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-                    Устройств
-                  </Box>
-                  <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
-                    Устр.
-                  </Box>
-                </TableCell>
-                <TableCell sx={{ width: { xs: "26%", sm: "34%" } }}>Пасека</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {(concentrators.data ?? []).map((row) => (
-                <TableRow
-                  key={row.id}
-                  hover
-                  component={RouterLink}
-                  to={`/devices/${row.id}`}
-                  sx={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}
-                >
-                  <TableCell>
-                    <Link
-                      component="span"
-                      underline="hover"
-                      color="primary"
-                      sx={{
-                        display: "block",
-                        fontWeight: 500,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {row.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{onlineChip(row.last_seen_at)}</TableCell>
-                  <TableCell align="right">{row.edge_device_count ?? 0}</TableCell>
-                  <TableCell>
-                    <Box
-                      component="span"
-                      sx={{
-                        display: "block",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {row.apiary_name ??
-                        apiaries.data?.find((a) => a.id === row.apiary_id)?.name ??
-                        `#${row.apiary_id}`}
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </ResponsiveTable>
+        <Grid container spacing={2}>
+          {(concentrators.data ?? []).map((row) => (
+            <Grid key={row.id} size={{ xs: 12, sm: 6, lg: 4 }}>
+              <ConcentratorCard item={row} apiaryLabel={apiaryLabel(row.apiary_id, row.apiary_name)} />
+            </Grid>
+          ))}
+        </Grid>
       )}
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth fullScreen={dialogFullScreen} maxWidth="sm">
