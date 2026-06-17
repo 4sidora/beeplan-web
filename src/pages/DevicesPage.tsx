@@ -56,9 +56,9 @@ export function DevicesPage() {
   const apiaries = useQuery({ queryKey: ["apiaries"], queryFn: api.apiaries });
 
   const concentrators = useQuery({
-    queryKey: ["concentrators-all"],
+    queryKey: ["concentrators-all", apiaries.data],
     queryFn: () => api.allConcentrators(),
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -164,7 +164,11 @@ export function DevicesPage() {
                   <TableCell>{onlineChip(row.last_seen_at)}</TableCell>
                   <TableCell>{formatLastSeen(row.last_seen_at)}</TableCell>
                   <TableCell align="right">{row.edge_device_count ?? 0}</TableCell>
-                  <TableCell>{row.apiary_name ?? `#${row.apiary_id}`}</TableCell>
+                  <TableCell>
+                    {row.apiary_name ??
+                      apiaries.data?.find((a) => a.id === row.apiary_id)?.name ??
+                      `#${row.apiary_id}`}
+                  </TableCell>
                   <TableCell align="right">
                     <IconButton size="small" onClick={() => openEdit(row)} aria-label="Редактировать">
                       <EditIcon fontSize="small" />

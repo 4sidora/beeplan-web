@@ -8,7 +8,16 @@ import App from "./App";
 import { SnackbarProvider } from "./components/SnackbarProvider";
 import { theme } from "./theme";
 
-const client = new QueryClient();
+const client = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      retry: 1,
+      staleTime: 15_000,
+    },
+  },
+});
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

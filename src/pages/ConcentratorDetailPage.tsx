@@ -53,7 +53,7 @@ export function ConcentratorDetailPage() {
     queryKey: ["concentrator", concentratorId],
     queryFn: () => api.concentrator(concentratorId),
     enabled: Number.isFinite(concentratorId),
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 
   const signalQuery = useQuery({
@@ -86,7 +86,7 @@ export function ConcentratorDetailPage() {
     queryKey: ["edge-devices", "concentrator", concentratorId],
     queryFn: () => api.edgeDevicesByConcentrator(concentratorId),
     enabled: Number.isFinite(concentratorId),
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 
   const colonies = useQuery({

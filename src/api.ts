@@ -1,3 +1,4 @@
+import { withApiSlot } from "./utils/apiQueue";
 import { saveReturnUrl } from "./utils/returnUrl";
 import { httpErrorMessage, toUserFacingError } from "./utils/userFacingError";
 
@@ -25,55 +26,57 @@ function handleSessionExpired(): void {
   window.location.replace("/login");
 }
 
-async function apiFetch<T>(path: string, init: RequestInit = {}, timeoutMs = 45_000): Promise<T> {
-  const headers = new Headers(init.headers);
-  headers.set("Accept", "application/json");
-  const token = getToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+async function apiFetch<T>(path: string, init: RequestInit = {}, timeoutMs = 25_000): Promise<T> {
+  return withApiSlot(async () => {
+    const headers = new Headers(init.headers);
+    headers.set("Accept", "application/json");
+    const token = getToken();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  const onAbort = () => controller.abort();
-  if (init.signal) {
-    if (init.signal.aborted) controller.abort();
-    else init.signal.addEventListener("abort", onAbort, { once: true });
-  }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const onAbort = () => controller.abort();
+    if (init.signal) {
+      if (init.signal.aborted) controller.abort();
+      else init.signal.addEventListener("abort", onAbort, { once: true });
+    }
 
-  let res: Response;
-  try {
-    res = await fetch(`${base}${path}`, { ...init, headers, signal: controller.signal });
-  } catch (e) {
-    if (e instanceof DOMException && e.name === "AbortError") {
-      throw new Error(toUserFacingError(e));
-    }
-    if (e instanceof TypeError) {
-      throw new Error(toUserFacingError(e));
-    }
-    throw e;
-  } finally {
-    clearTimeout(timeout);
-    init.signal?.removeEventListener("abort", onAbort);
-  }
-
-  const text = await res.text();
-  if (!res.ok) {
-    if (res.status === 401 && path !== "/v1/auth/token") {
-      handleSessionExpired();
-    }
-    let detail = text || res.statusText;
+    let res: Response;
     try {
-      const parsed = JSON.parse(text) as { detail?: string | { msg?: string }[] };
-      if (typeof parsed.detail === "string") detail = parsed.detail;
-      else if (Array.isArray(parsed.detail)) {
-        detail = parsed.detail.map((d) => d.msg ?? JSON.stringify(d)).join("; ");
+      res = await fetch(`${base}${path}`, { ...init, headers, signal: controller.signal });
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") {
+        throw new Error(toUserFacingError(e));
       }
-    } catch {
-      /* keep raw text */
+      if (e instanceof TypeError) {
+        throw new Error(toUserFacingError(e));
+      }
+      throw e;
+    } finally {
+      clearTimeout(timeout);
+      init.signal?.removeEventListener("abort", onAbort);
     }
-    throw new Error(httpErrorMessage(res.status, detail));
-  }
-  if (res.status === 204 || res.status === 205 || !text) return undefined as T;
-  return JSON.parse(text) as T;
+
+    const text = await res.text();
+    if (!res.ok) {
+      if (res.status === 401 && path !== "/v1/auth/token") {
+        handleSessionExpired();
+      }
+      let detail = text || res.statusText;
+      try {
+        const parsed = JSON.parse(text) as { detail?: string | { msg?: string }[] };
+        if (typeof parsed.detail === "string") detail = parsed.detail;
+        else if (Array.isArray(parsed.detail)) {
+          detail = parsed.detail.map((d) => d.msg ?? JSON.stringify(d)).join("; ");
+        }
+      } catch {
+        /* keep raw text */
+      }
+      throw new Error(httpErrorMessage(res.status, detail));
+    }
+    if (res.status === 204 || res.status === 205 || !text) return undefined as T;
+    return JSON.parse(text) as T;
+  });
 }
 
 export type Apiary = { id: number; name: string };
@@ -146,24 +149,13 @@ function dedupeConcentrators(items: Concentrator[]): Concentrator[] {
 async function fetchAllConcentrators(): Promise<Concentrator[]> {
   try {
     const all = await apiFetch<Concentrator[] | Concentrator>("/v1/concentrators");
-    const list = dedupeConcentrators(asArray(all));
-    if (list.length > 0) return enrichConcentratorApiaryNames(list);
+    return dedupeConcentrators(asArray(all));
   } catch {
     /* старый API требует apiary_id — собираем по пасекам */
   }
 
   const apiaries = asArray(await apiFetch<Apiary[] | Apiary>("/v1/apiaries"));
   return fetchConcentratorsForApiaries(apiaries);
-}
-
-async function enrichConcentratorApiaryNames(items: Concentrator[]): Promise<Concentrator[]> {
-  if (items.every((c) => c.apiary_name)) return items;
-  const apiaries = asArray(await apiFetch<Apiary[] | Apiary>("/v1/apiaries"));
-  const names = new Map(apiaries.map((a) => [a.id, a.name]));
-  return items.map((c) => ({
-    ...c,
-    apiary_name: c.apiary_name ?? names.get(c.apiary_id) ?? null,
-  }));
 }
 
 async function fetchConcentratorsForApiaries(apiaries: Apiary[]): Promise<Concentrator[]> {

@@ -52,7 +52,7 @@ export function EdgeDeviceDetailPage() {
     queryKey: ["edge-device", deviceId],
     queryFn: () => api.edgeDevice(deviceId),
     enabled: Number.isFinite(deviceId),
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 
   const concentratorId = device.data?.concentrator_id;
