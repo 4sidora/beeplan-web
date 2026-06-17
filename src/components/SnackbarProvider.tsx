@@ -1,6 +1,7 @@
 import Alert from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { toUserFacingError } from "../utils/userFacingError";
 
 type SnackbarState = { open: boolean; message: string; severity: "success" | "error" };
 
@@ -23,7 +24,7 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const showError = useCallback((message: string) => {
-    setState({ open: true, message, severity: "error" });
+    setState({ open: true, message: toUserFacingError(message), severity: "error" });
   }, []);
 
   const value = useMemo(() => ({ showSuccess, showError }), [showSuccess, showError]);

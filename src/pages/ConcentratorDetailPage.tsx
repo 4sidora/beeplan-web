@@ -27,6 +27,7 @@ import { EdgeDeviceCard } from "../components/EdgeDeviceCard";
 import { FormDialog } from "../components/FormDialog";
 import { useSnackbar } from "../components/SnackbarProvider";
 import { EDGE_DEVICE_NAME_PLACEHOLDER } from "../constants/edgeDevice";
+import { toUserFacingError } from "../utils/userFacingError";
 
 function colonyStatusLabel(
   colonyId: number | null,
@@ -236,8 +237,7 @@ export function ConcentratorDetailPage() {
 
       {edgeDevices.isError ? (
         <Alert severity="error" sx={{ mb: 2 }}>
-          Не удалось загрузить устройства:{" "}
-          {edgeDevices.error instanceof Error ? edgeDevices.error.message : "ошибка сети"}
+          {toUserFacingError(edgeDevices.error, "Не удалось загрузить устройства")}
         </Alert>
       ) : null}
 

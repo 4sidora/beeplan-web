@@ -26,6 +26,7 @@ import { TelemetryChart } from "../components/TelemetryChart";
 import { useApiaryParam } from "../hooks/useApiaryParam";
 import { useTelemetryPeriod, useTelemetryViewParams } from "../hooks/useTelemetryParams";
 import { mergeColonySeries, pointsToSingleSeries } from "../utils/telemetry";
+import { toUserFacingError } from "../utils/userFacingError";
 
 export function TelemetryPage() {
   const theme = useTheme();
@@ -212,7 +213,7 @@ export function TelemetryPage() {
           <CircularProgress />
         </Box>
       ) : error ? (
-        <Typography color="error">{String((error as Error).message)}</Typography>
+        <Typography color="error">{toUserFacingError(error, "Не удалось загрузить телеметрию")}</Typography>
       ) : isMulti ? (
         <>
           <TelemetryChart

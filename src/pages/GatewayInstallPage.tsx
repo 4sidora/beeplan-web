@@ -27,6 +27,7 @@ import {
   type FirmwareBoardId,
 } from "../constants/boards";
 import { useApiaryParam } from "../hooks/useApiaryParam";
+import { toUserFacingError } from "../utils/userFacingError";
 
 const DEFAULT_DEVICE_API_URL = "http://api.beeplan.tech";
 
@@ -223,7 +224,7 @@ export function GatewayInstallPage() {
             />
             <TextField
               label="URL API для устройства"
-              helperText="LAN-IP вашего ПК с API (ipconfig)"
+              helperText="IP-адрес компьютера с API в вашей локальной сети"
               value={apiBaseUrl}
               onChange={(e) => setApiBaseUrl(e.target.value)}
               fullWidth
@@ -263,7 +264,7 @@ export function GatewayInstallPage() {
             )}
             {build.status === "failed" && (
               <>
-                <Alert severity="error">{build.error || "Ошибка сборки"}</Alert>
+                <Alert severity="error">{toUserFacingError(build.error, "Ошибка сборки прошивки")}</Alert>
                 <Button variant="outlined" onClick={() => setActiveStep(1)}>
                   Вернуться к параметрам
                 </Button>

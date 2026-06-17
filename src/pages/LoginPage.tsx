@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api, setToken } from "../api";
 import { consumeReturnUrl, returnPathFromState } from "../utils/returnUrl";
+import { toUserFacingError } from "../utils/userFacingError";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -72,7 +73,7 @@ export function LoginPage() {
         </Button>
         {login.isError && (
           <Typography color="error" variant="body2" sx={{ mt: 2 }}>
-            {String((login.error as Error).message)}
+            {toUserFacingError(login.error, "Не удалось войти")}
           </Typography>
         )}
       </Paper>

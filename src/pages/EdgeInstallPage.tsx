@@ -30,6 +30,7 @@ import {
   edgeProductTypeById,
 } from "../constants/edgeProductTypes";
 import { useApiaryParam } from "../hooks/useApiaryParam";
+import { toUserFacingError } from "../utils/userFacingError";
 
 const steps = ["Тип устройства", "Плата", "Параметры", "Сборка", "Прошивка"];
 
@@ -383,7 +384,7 @@ export function EdgeInstallPage() {
             )}
             {build.status === "failed" && (
               <>
-                <Alert severity="error">{build.error || "Ошибка сборки"}</Alert>
+                <Alert severity="error">{toUserFacingError(build.error, "Ошибка сборки прошивки")}</Alert>
                 <Button variant="outlined" onClick={() => setActiveStep(2)}>
                   Вернуться к параметрам
                 </Button>

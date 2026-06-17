@@ -36,6 +36,7 @@ import { useSnackbar } from "../components/SnackbarProvider";
 import { BASE_STATION_NAME_PLACEHOLDER } from "../constants/baseStation";
 import { formatLastSeen } from "../utils/formatLastSeen";
 import { isDeviceOnline } from "../utils/deviceOnline";
+import { toUserFacingError } from "../utils/userFacingError";
 
 function onlineChip(lastSeen: string | null) {
   const online = isDeviceOnline(lastSeen);
@@ -124,8 +125,7 @@ export function DevicesPage() {
 
       {concentrators.isError ? (
         <Alert severity="error" sx={{ mb: 2 }}>
-          Не удалось загрузить базовые станции:{" "}
-          {concentrators.error instanceof Error ? concentrators.error.message : "ошибка сети"}
+          {toUserFacingError(concentrators.error, "Не удалось загрузить базовые станции")}
         </Alert>
       ) : null}
 

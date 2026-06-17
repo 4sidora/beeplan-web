@@ -1,4 +1,5 @@
 import { saveReturnUrl } from "./utils/returnUrl";
+import { httpErrorMessage, toUserFacingError } from "./utils/userFacingError";
 
 const base = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "http://localhost:8000";
 
@@ -43,9 +44,10 @@ async function apiFetch<T>(path: string, init: RequestInit = {}, timeoutMs = 45_
     res = await fetch(`${base}${path}`, { ...init, headers, signal: controller.signal });
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") {
-      throw new Error(
-        "Сервер не отвечает. Проверьте API (http://localhost:8000) и перезапустите Docker при зависании.",
-      );
+      throw new Error(toUserFacingError(e));
+    }
+    if (e instanceof TypeError) {
+      throw new Error(toUserFacingError(e));
     }
     throw e;
   } finally {
@@ -58,17 +60,17 @@ async function apiFetch<T>(path: string, init: RequestInit = {}, timeoutMs = 45_
     if (res.status === 401 && path !== "/v1/auth/token") {
       handleSessionExpired();
     }
-    let message = text || res.statusText;
+    let detail = text || res.statusText;
     try {
       const parsed = JSON.parse(text) as { detail?: string | { msg?: string }[] };
-      if (typeof parsed.detail === "string") message = parsed.detail;
+      if (typeof parsed.detail === "string") detail = parsed.detail;
       else if (Array.isArray(parsed.detail)) {
-        message = parsed.detail.map((d) => d.msg ?? JSON.stringify(d)).join("; ");
+        detail = parsed.detail.map((d) => d.msg ?? JSON.stringify(d)).join("; ");
       }
     } catch {
       /* keep raw text */
     }
-    throw new Error(message);
+    throw new Error(httpErrorMessage(res.status, detail));
   }
   if (res.status === 204 || res.status === 205 || !text) return undefined as T;
   return JSON.parse(text) as T;

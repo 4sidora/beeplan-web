@@ -49,7 +49,7 @@ type Props = {
   trailing?: ReactNode;
 };
 
-/** Липкая шапка детальной страницы: назад, заголовок, сигнал/батарея и действия в одной строке. */
+/** Шапка детальной страницы: назад, заголовок, статус и действия. */
 export function DetailStickyHeader({
   backTo,
   backLabel,
@@ -68,21 +68,15 @@ export function DetailStickyHeader({
   return (
     <Box
       sx={{
-        position: "sticky",
-        top: { xs: 56, sm: 64 },
-        zIndex: (theme) => theme.zIndex.appBar - 1,
         bgcolor: "background.default",
         borderBottom: 1,
         borderColor: "divider",
         mb: 2,
-        mx: -0.5,
-        px: 0.5,
         py: 1,
         display: "flex",
         alignItems: "center",
         gap: { xs: 0.75, sm: 1.5 },
-        flexWrap: { xs: "wrap", sm: "nowrap" },
-        minHeight: { xs: 48, sm: 52 },
+        flexWrap: { xs: "wrap", md: "nowrap" },
       }}
     >
       <Tooltip title={backLabel}>
@@ -137,9 +131,9 @@ export function DetailStickyHeader({
           flexWrap: "wrap",
           gap: 0.5,
           flexShrink: 0,
-          width: { xs: "100%", sm: "auto" },
-          justifyContent: { xs: "flex-end", sm: "flex-start" },
-          pl: { xs: 5, sm: 0 },
+          width: { xs: "100%", md: "auto" },
+          justifyContent: { xs: "flex-end", md: "flex-start" },
+          pl: { xs: 5, md: 0 },
         }}
       >
         {secondaryActions.map((action) => (
