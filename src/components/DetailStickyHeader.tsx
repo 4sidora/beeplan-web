@@ -13,6 +13,8 @@ import { isDeviceOnline } from "../utils/deviceOnline";
 import { DeviceStatusIndicators } from "./DeviceStatusIndicators";
 import type { HeaderAction } from "./ObjectCardHeader";
 
+const STICKY_TOP = { xs: 56, sm: 64 };
+
 function HeaderButton({ action }: { action: HeaderAction }) {
   if (action.to) {
     return (
@@ -68,6 +70,9 @@ export function DetailStickyHeader({
   return (
     <Box
       sx={{
+        position: "sticky",
+        top: STICKY_TOP,
+        zIndex: (t) => t.zIndex.appBar - 1,
         bgcolor: "background.default",
         borderBottom: 1,
         borderColor: "divider",

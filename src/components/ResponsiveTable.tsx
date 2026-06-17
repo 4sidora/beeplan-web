@@ -4,13 +4,21 @@ import type { ReactNode } from "react";
 
 type Props = {
   children: ReactNode;
+  /** Горизонтальная прокрутка — только для таблиц метрик/статистики. */
+  scrollable?: boolean;
 };
 
-/** Paper + horizontal scroll for wide tables on phones. */
-export function ResponsiveTable({ children }: Props) {
+/** Обёртка для таблиц-списков объектов (без горизонтальной прокрутки по умолчанию). */
+export function ResponsiveTable({ children, scrollable = false }: Props) {
   return (
-    <Paper>
-      <TableContainer sx={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+    <Paper variant="outlined">
+      <TableContainer
+        sx={
+          scrollable
+            ? { overflowX: "auto", WebkitOverflowScrolling: "touch" }
+            : { overflowX: "hidden" }
+        }
+      >
         {children}
       </TableContainer>
     </Paper>

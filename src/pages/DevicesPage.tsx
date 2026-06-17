@@ -1,10 +1,9 @@
 import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import Link from "@mui/material/Link";
 import Tooltip from "@mui/material/Tooltip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
@@ -13,7 +12,6 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import FormControl from "@mui/material/FormControl";
 import InputAdornment from "@mui/material/InputAdornment";
-import IconButton from "@mui/material/IconButton";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
@@ -28,8 +26,7 @@ import TextField from "@mui/material/TextField";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import { api, type Concentrator } from "../api";
-import { ConfirmDialog } from "../components/ConfirmDialog";
+import { api } from "../api";
 import { PageHeader } from "../components/PageHeader";
 import { ResponsiveTable } from "../components/ResponsiveTable";
 import { useSnackbar } from "../components/SnackbarProvider";
@@ -42,10 +39,27 @@ function onlineChip(lastSeen: string | null) {
   const online = isDeviceOnline(lastSeen);
   return (
     <Tooltip title={formatLastSeen(lastSeen)}>
-      <Chip size="small" label={online ? "В сети" : "Офлайн"} color={online ? "success" : "default"} />
+      <Chip
+        size="small"
+        label={online ? "В сети" : "Офлайн"}
+        color={online ? "success" : "default"}
+        sx={{ maxWidth: "100%", "& .MuiChip-label": { px: { xs: 0.75, sm: 1 }, fontSize: { xs: "0.7rem", sm: "0.8125rem" } } }}
+      />
     </Tooltip>
   );
 }
+
+const listTableSx = {
+  tableLayout: "fixed",
+  width: "100%",
+  "& .MuiTableCell-root": {
+    px: { xs: 0.5, sm: 1.5 },
+    py: { xs: 0.75, sm: 1 },
+    fontSize: { xs: "0.8rem", sm: "0.875rem" },
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+} as const;
 
 export function DevicesPage() {
   const qc = useQueryClient();
@@ -62,14 +76,11 @@ export function DevicesPage() {
   });
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editItem, setEditItem] = useState<Concentrator | null>(null);
   const [name, setName] = useState("");
   const [apiaryId, setApiaryId] = useState<number | "">("");
-  const [deleteItem, setDeleteItem] = useState<Concentrator | null>(null);
   const [nameLoading, setNameLoading] = useState(false);
 
   const openCreate = async () => {
-    setEditItem(null);
     setApiaryId(apiaries.data?.[0]?.id ?? "");
     setDialogOpen(true);
     setNameLoading(true);
@@ -84,35 +95,17 @@ export function DevicesPage() {
     }
   };
 
-  const openEdit = (item: Concentrator) => {
-    setEditItem(item);
-    setName(item.name);
-    setApiaryId(item.apiary_id);
-    setDialogOpen(true);
-  };
-
   const save = useMutation({
     mutationFn: async () => {
-      if (editItem) return api.updateConcentrator(editItem.id, name);
       if (apiaryId === "") throw new Error("Выберите пасеку");
       return api.createConcentrator(Number(apiaryId), name);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["concentrators-all"] });
       setDialogOpen(false);
-      showSuccess(editItem ? "Базовая станция обновлена" : "Базовая станция создана");
+      showSuccess("Базовая станция создана");
     },
     onError: (e) => showError(e instanceof Error ? e.message : "Ошибка сохранения"),
-  });
-
-  const remove = useMutation({
-    mutationFn: (id: number) => api.deleteConcentrator(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["concentrators-all"] });
-      setDeleteItem(null);
-      showSuccess("Базовая станция удалена");
-    },
-    onError: (e) => showError(e instanceof Error ? e.message : "Не удалось удалить"),
   });
 
   return (
@@ -137,42 +130,63 @@ export function DevicesPage() {
         <Alert severity="info">Добавьте первую базовую станцию.</Alert>
       ) : (
         <ResponsiveTable>
-          <Table>
+          <Table size="small" sx={listTableSx}>
             <TableHead>
               <TableRow>
-                <TableCell>Название</TableCell>
-                <TableCell>Статус</TableCell>
-                <TableCell>Последний контакт</TableCell>
-                <TableCell align="right">Устройств</TableCell>
-                <TableCell>Пасека</TableCell>
-                <TableCell align="right">Действия</TableCell>
+                <TableCell sx={{ width: { xs: "36%", sm: "34%" } }}>Название</TableCell>
+                <TableCell sx={{ width: { xs: "24%", sm: "18%" } }}>Статус</TableCell>
+                <TableCell align="right" sx={{ width: { xs: "14%", sm: "14%" } }}>
+                  <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                    Устройств
+                  </Box>
+                  <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+                    Устр.
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ width: { xs: "26%", sm: "34%" } }}>Пасека</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {(concentrators.data ?? []).map((row) => (
-                <TableRow key={row.id} hover>
+                <TableRow
+                  key={row.id}
+                  hover
+                  component={RouterLink}
+                  to={`/devices/${row.id}`}
+                  sx={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}
+                >
                   <TableCell>
-                    <Button
-                      component={RouterLink}
-                      to={`/devices/${row.id}`}
-                      size="small"
-                      endIcon={<OpenInNewIcon sx={{ fontSize: 16 }} />}
+                    <Link
+                      component="span"
+                      underline="hover"
+                      color="primary"
+                      sx={{
+                        display: "block",
+                        fontWeight: 500,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
                     >
                       {row.name}
-                    </Button>
+                    </Link>
                   </TableCell>
                   <TableCell>{onlineChip(row.last_seen_at)}</TableCell>
-                  <TableCell>{formatLastSeen(row.last_seen_at)}</TableCell>
                   <TableCell align="right">{row.edge_device_count ?? 0}</TableCell>
                   <TableCell>
-                    {row.apiary_name ??
-                      apiaries.data?.find((a) => a.id === row.apiary_id)?.name ??
-                      `#${row.apiary_id}`}
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton size="small" onClick={() => openEdit(row)} aria-label="Редактировать">
-                      <EditIcon fontSize="small" />
-                    </IconButton>
+                    <Box
+                      component="span"
+                      sx={{
+                        display: "block",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {row.apiary_name ??
+                        apiaries.data?.find((a) => a.id === row.apiary_id)?.name ??
+                        `#${row.apiary_id}`}
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))}
@@ -182,21 +196,19 @@ export function DevicesPage() {
       )}
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth fullScreen={dialogFullScreen} maxWidth="sm">
-        <DialogTitle>
-          {editItem ? "Редактировать базовую станцию" : "Новая базовая станция"}
-        </DialogTitle>
+        <DialogTitle>Новая базовая станция</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
             fullWidth
             label="Название"
             margin="normal"
-            placeholder={editItem ? undefined : BASE_STATION_NAME_PLACEHOLDER}
+            placeholder={BASE_STATION_NAME_PLACEHOLDER}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            disabled={!editItem && nameLoading}
+            disabled={nameLoading}
             slotProps={
-              !editItem && nameLoading
+              nameLoading
                 ? {
                     input: {
                       endAdornment: (
@@ -209,59 +221,33 @@ export function DevicesPage() {
                 : undefined
             }
           />
-          {!editItem && (
-            <FormControl fullWidth margin="normal">
-              <InputLabel id="apiary-pick">Пасека</InputLabel>
-              <Select
-                labelId="apiary-pick"
-                label="Пасека"
-                value={apiaryId}
-                onChange={(e) => setApiaryId(Number(e.target.value))}
-              >
-                {(apiaries.data ?? []).map((a) => (
-                  <MenuItem key={a.id} value={a.id}>
-                    {a.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="apiary-pick">Пасека</InputLabel>
+            <Select
+              labelId="apiary-pick"
+              label="Пасека"
+              value={apiaryId}
+              onChange={(e) => setApiaryId(Number(e.target.value))}
+            >
+              {(apiaries.data ?? []).map((a) => (
+                <MenuItem key={a.id} value={a.id}>
+                  {a.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </DialogContent>
         <DialogActions>
-          {editItem ? (
-            <Button
-              color="error"
-              onClick={() => {
-                setDialogOpen(false);
-                setDeleteItem(editItem);
-              }}
-              sx={{ mr: "auto" }}
-            >
-              Удалить
-            </Button>
-          ) : null}
           <Button onClick={() => setDialogOpen(false)}>Отмена</Button>
           <Button
             variant="contained"
             onClick={() => save.mutate()}
-            disabled={
-              (editItem ? !name.trim() : apiaryId === "" || nameLoading || !name.trim()) ||
-              save.isPending
-            }
+            disabled={apiaryId === "" || nameLoading || !name.trim() || save.isPending}
           >
             Сохранить
           </Button>
         </DialogActions>
       </Dialog>
-
-      <ConfirmDialog
-        open={deleteItem != null}
-        title="Удалить базовую станцию?"
-        message="Базовая станция и все её устройства будут скрыты из списков. Данные в системе сохранятся."
-        onCancel={() => setDeleteItem(null)}
-        onConfirm={() => deleteItem && remove.mutate(deleteItem.id)}
-        loading={remove.isPending}
-      />
     </>
   );
 }
