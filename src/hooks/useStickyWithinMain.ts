@@ -30,7 +30,7 @@ export function useStickyWithinMain() {
     const observer = new ResizeObserver(update);
     observer.observe(header);
     return () => observer.disconnect();
-  }, [title, secondaryActions.length]);
+  }, []);
 
   return { sentinelRef, headerRef, stuck, headerHeight };
 }
