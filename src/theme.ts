@@ -10,7 +10,7 @@ export const theme = createTheme({
   shape: { borderRadius: 8 },
   typography: {
     fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h5: { fontWeight: 600 },
+    h5: { fontWeight: 600, fontSize: "1.35rem", "@media (min-width:600px)": { fontSize: "1.5rem" } },
     h6: { fontWeight: 600 },
   },
 });

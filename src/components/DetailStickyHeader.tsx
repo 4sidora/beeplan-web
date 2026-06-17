@@ -81,7 +81,7 @@ export function DetailStickyHeader({
         display: "flex",
         alignItems: "center",
         gap: { xs: 0.75, sm: 1.5 },
-        flexWrap: "nowrap",
+        flexWrap: { xs: "wrap", sm: "nowrap" },
         minHeight: { xs: 48, sm: 52 },
       }}
     >
@@ -134,8 +134,12 @@ export function DetailStickyHeader({
         sx={{
           display: "flex",
           alignItems: "center",
+          flexWrap: "wrap",
           gap: 0.5,
           flexShrink: 0,
+          width: { xs: "100%", sm: "auto" },
+          justifyContent: { xs: "flex-end", sm: "flex-start" },
+          pl: { xs: 5, sm: 0 },
         }}
       >
         {secondaryActions.map((action) => (

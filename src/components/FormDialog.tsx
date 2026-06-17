@@ -4,6 +4,8 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -31,11 +33,15 @@ export function FormDialog({
   maxWidth = "xs",
   children,
 }: Props) {
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+
   return (
     <Dialog
       open={open}
       onClose={onClose}
       fullWidth
+      fullScreen={fullScreen}
       maxWidth={maxWidth}
       onKeyDown={(e) => {
         if (e.key === "Escape") {

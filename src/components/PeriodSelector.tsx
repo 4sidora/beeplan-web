@@ -1,6 +1,5 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import ButtonGroup from "@mui/material/ButtonGroup";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
@@ -41,30 +40,34 @@ export function PeriodSelector({
       <Typography variant="subtitle2" gutterBottom>
         Период
       </Typography>
-      <ButtonGroup size="small" sx={{ mb: 2, flexWrap: "wrap" }}>
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: 2 }}>
         {PRESETS.map(({ key, label }) => (
           <Button
             key={key}
+            size="small"
             variant={preset === key ? "contained" : "outlined"}
             onClick={() => onPresetChange(key)}
+            sx={{ flex: { xs: "1 1 calc(33% - 8px)", sm: "0 0 auto" }, minWidth: 0 }}
           >
             {label}
           </Button>
         ))}
-      </ButtonGroup>
+      </Box>
       {preset === "custom" ? (
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, flexWrap: "wrap", gap: 2 }}>
           <DateTimePicker
             label="С"
             value={from}
             onChange={(v) => v && onFromChange(v)}
-            slotProps={{ textField: { size: "small" } }}
+            slotProps={{ textField: { size: "small", fullWidth: true } }}
+            sx={{ width: { xs: "100%", sm: "auto" } }}
           />
           <DateTimePicker
             label="По"
             value={to}
             onChange={(v) => v && onToChange(v)}
-            slotProps={{ textField: { size: "small" } }}
+            slotProps={{ textField: { size: "small", fullWidth: true } }}
+            sx={{ width: { xs: "100%", sm: "auto" } }}
           />
         </Box>
       ) : (

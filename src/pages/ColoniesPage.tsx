@@ -7,7 +7,6 @@ import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import IconButton from "@mui/material/IconButton";
 import Link from "@mui/material/Link";
-import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -23,6 +22,7 @@ import { ColonyFormFields } from "../components/ColonyFormFields";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { FormDialog } from "../components/FormDialog";
 import { PageHeader } from "../components/PageHeader";
+import { ResponsiveTable } from "../components/ResponsiveTable";
 import { useSnackbar } from "../components/SnackbarProvider";
 import { useApiaryParam } from "../hooks/useApiaryParam";
 import {
@@ -128,7 +128,7 @@ export function ColoniesPage() {
       ) : data.length === 0 ? (
         <Typography color="text.secondary">Нет семей в этой пасеке.</Typography>
       ) : (
-        <Paper>
+        <ResponsiveTable>
           <Table>
             <TableHead>
               <TableRow>
@@ -176,7 +176,7 @@ export function ColoniesPage() {
               ))}
             </TableBody>
           </Table>
-        </Paper>
+        </ResponsiveTable>
       )}
 
       <FormDialog

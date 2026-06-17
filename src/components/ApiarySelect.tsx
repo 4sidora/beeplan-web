@@ -19,7 +19,11 @@ export function ApiarySelect({ value, onChange, minWidth = 280, allowEmpty = fal
   });
 
   return (
-    <FormControl size="small" sx={{ minWidth }} disabled={isLoading}>
+    <FormControl
+      size="small"
+      sx={{ minWidth: { xs: 0, sm: minWidth }, width: { xs: "100%", sm: "auto" } }}
+      disabled={isLoading}
+    >
       <InputLabel id="apiary-select-label">Пасека</InputLabel>
       <Select
         labelId="apiary-select-label"

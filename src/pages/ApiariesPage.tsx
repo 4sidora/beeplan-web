@@ -5,7 +5,6 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import IconButton from "@mui/material/IconButton";
-import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -19,6 +18,7 @@ import { api, type Apiary } from "../api";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { FormDialog } from "../components/FormDialog";
 import { PageHeader } from "../components/PageHeader";
+import { ResponsiveTable } from "../components/ResponsiveTable";
 import { useSnackbar } from "../components/SnackbarProvider";
 
 export function ApiariesPage() {
@@ -84,7 +84,7 @@ export function ApiariesPage() {
       ) : data.length === 0 ? (
         <Typography color="text.secondary">Нет пасек. Создайте первую.</Typography>
       ) : (
-        <Paper>
+        <ResponsiveTable>
           <Table>
             <TableHead>
               <TableRow>
@@ -110,7 +110,7 @@ export function ApiariesPage() {
               ))}
             </TableBody>
           </Table>
-        </Paper>
+        </ResponsiveTable>
       )}
 
       <FormDialog

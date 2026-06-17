@@ -10,6 +10,8 @@ import StepLabel from "@mui/material/StepLabel";
 import Stepper from "@mui/material/Stepper";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
@@ -40,6 +42,8 @@ function parseEdgeDeviceId(searchParams: URLSearchParams): number | null {
 
 export function EdgeInstallPage() {
   const { showError } = useSnackbar();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [searchParams] = useSearchParams();
   const [apiaryId, setApiaryId] = useApiaryParam();
   const edgeDeviceId = useMemo(() => parseEdgeDeviceId(searchParams), [searchParams]);
@@ -231,7 +235,7 @@ export function EdgeInstallPage() {
         </Alert>
       )}
 
-      <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
+      <Stepper activeStep={activeStep} orientation={isMobile ? "vertical" : "horizontal"} sx={{ mb: 3 }}>
         {steps.map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
@@ -239,7 +243,7 @@ export function EdgeInstallPage() {
         ))}
       </Stepper>
 
-      <Paper sx={{ p: 3, maxWidth: activeStep === 1 ? 1040 : activeStep === 0 ? 720 : 640 }}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, maxWidth: activeStep === 1 ? 1040 : activeStep === 0 ? 720 : 640 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>
           {deviceTitle}
         </Typography>

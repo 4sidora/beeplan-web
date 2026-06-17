@@ -11,6 +11,8 @@ import Radio from "@mui/material/Radio";
 import RadioGroup from "@mui/material/RadioGroup";
 import Select from "@mui/material/Select";
 import Typography from "@mui/material/Typography";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useQueries, useQuery } from "@tanstack/react-query";
@@ -26,6 +28,8 @@ import { useTelemetryPeriod, useTelemetryViewParams } from "../hooks/useTelemetr
 import { mergeColonySeries, pointsToSingleSeries } from "../utils/telemetry";
 
 export function TelemetryPage() {
+  const theme = useTheme();
+  const stackControls = useMediaQuery(theme.breakpoints.down("sm"));
   const [apiaryId, setApiaryId] = useApiaryParam();
   const { preset, setPreset, from, to, setFrom, setTo, fromIso, toIso } = useTelemetryPeriod();
 
@@ -138,7 +142,7 @@ export function TelemetryPage() {
           Режим просмотра
         </Typography>
         <RadioGroup
-          row
+          row={!stackControls}
           value={mode}
           onChange={(e) => setMode(e.target.value as typeof mode)}
         >
@@ -148,7 +152,7 @@ export function TelemetryPage() {
         </RadioGroup>
 
         {mode === "single" && (
-          <FormControl size="small" sx={{ minWidth: 220, mt: 1 }} disabled={!colonies.data?.length}>
+          <FormControl size="small" sx={{ minWidth: { xs: 0, sm: 220 }, width: { xs: "100%", sm: "auto" }, mt: 1 }} disabled={!colonies.data?.length}>
             <InputLabel id="colony-tel-label">Семья</InputLabel>
             <Select
               labelId="colony-tel-label"
@@ -166,7 +170,7 @@ export function TelemetryPage() {
         )}
 
         {mode === "selected" && (
-          <FormGroup row sx={{ mt: 1 }}>
+          <FormGroup sx={{ mt: 1, display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(3, minmax(0, 1fr))" }, gap: 0.5 }}>
             {(colonies.data ?? []).map((c) => (
               <FormControlLabel
                 key={c.id}

@@ -16,8 +16,9 @@ import InputAdornment from "@mui/material/InputAdornment";
 import IconButton from "@mui/material/IconButton";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
-import Paper from "@mui/material/Paper";
 import Select from "@mui/material/Select";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -30,6 +31,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { api, type Concentrator } from "../api";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PageHeader } from "../components/PageHeader";
+import { ResponsiveTable } from "../components/ResponsiveTable";
 import { useSnackbar } from "../components/SnackbarProvider";
 import { BASE_STATION_NAME_PLACEHOLDER } from "../constants/baseStation";
 import { formatLastSeen } from "../utils/formatLastSeen";
@@ -47,6 +49,8 @@ function onlineChip(lastSeen: string | null) {
 export function DevicesPage() {
   const qc = useQueryClient();
   const { showSuccess, showError } = useSnackbar();
+  const theme = useTheme();
+  const dialogFullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
   const apiaries = useQuery({ queryKey: ["apiaries"], queryFn: api.apiaries });
 
@@ -132,7 +136,7 @@ export function DevicesPage() {
       ) : (concentrators.data ?? []).length === 0 ? (
         <Alert severity="info">Добавьте первую базовую станцию.</Alert>
       ) : (
-        <Paper>
+        <ResponsiveTable>
           <Table>
             <TableHead>
               <TableRow>
@@ -170,10 +174,10 @@ export function DevicesPage() {
               ))}
             </TableBody>
           </Table>
-        </Paper>
+        </ResponsiveTable>
       )}
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth fullScreen={dialogFullScreen} maxWidth="sm">
         <DialogTitle>
           {editItem ? "Редактировать базовую станцию" : "Новая базовая станция"}
         </DialogTitle>

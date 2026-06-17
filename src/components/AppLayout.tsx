@@ -105,8 +105,13 @@ export function AppLayout() {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Мониторинг пчелиных семей
+          <Typography variant="h6" noWrap sx={{ flexGrow: 1, minWidth: 0 }}>
+            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+              Мониторинг пчелиных семей
+            </Box>
+            <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+              BeePlan
+            </Box>
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mr: 2, display: { xs: "none", md: "block" } }}>
             {me.data?.email}
@@ -152,9 +157,11 @@ export function AppLayout() {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          p: { xs: 1.5, sm: 2, md: 3 },
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mt: 8,
+          mt: { xs: 7, sm: 8 },
+          minWidth: 0,
+          overflowX: "hidden",
         }}
       >
         <Outlet />

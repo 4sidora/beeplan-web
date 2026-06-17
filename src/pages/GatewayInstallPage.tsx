@@ -10,6 +10,8 @@ import StepLabel from "@mui/material/StepLabel";
 import Stepper from "@mui/material/Stepper";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
@@ -46,6 +48,8 @@ function parseConcentratorId(searchParams: URLSearchParams): number | null {
 
 export function GatewayInstallPage() {
   const { showError } = useSnackbar();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [searchParams] = useSearchParams();
   const [apiaryId, setApiaryId] = useApiaryParam();
   const concentratorId = useMemo(() => parseConcentratorId(searchParams), [searchParams]);
@@ -174,7 +178,7 @@ export function GatewayInstallPage() {
         </Alert>
       )}
 
-      <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
+      <Stepper activeStep={activeStep} orientation={isMobile ? "vertical" : "horizontal"} sx={{ mb: 3 }}>
         {steps.map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
@@ -182,7 +186,7 @@ export function GatewayInstallPage() {
         ))}
       </Stepper>
 
-      <Paper sx={{ p: 3, maxWidth: activeStep === 0 ? 1040 : 640 }}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, maxWidth: activeStep === 0 ? 1040 : 640 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>
           {conc.name}
         </Typography>

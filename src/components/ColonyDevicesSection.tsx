@@ -8,7 +8,6 @@ import FormControl from "@mui/material/FormControl";
 import IconButton from "@mui/material/IconButton";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
-import Paper from "@mui/material/Paper";
 import Select from "@mui/material/Select";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -22,6 +21,7 @@ import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { api } from "../api";
 import { FormDialog } from "./FormDialog";
+import { ResponsiveTable } from "./ResponsiveTable";
 import { EDGE_DEVICE_NAME_PLACEHOLDER } from "../constants/edgeDevice";
 import { EDGE_DEVICE_METRICS_LABEL } from "../utils/colonyCatalog";
 
@@ -121,7 +121,7 @@ export function ColonyDevicesSection({ colonyId, apiaryId, showTitle = true }: P
       ) : devices.length === 0 ? (
         <Typography color="text.secondary">Нет привязанных устройств.</Typography>
       ) : (
-        <Paper>
+        <ResponsiveTable>
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -155,7 +155,7 @@ export function ColonyDevicesSection({ colonyId, apiaryId, showTitle = true }: P
               ))}
             </TableBody>
           </Table>
-        </Paper>
+        </ResponsiveTable>
       )}
 
       <FormDialog
