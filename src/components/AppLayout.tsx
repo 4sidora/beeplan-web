@@ -24,6 +24,7 @@ import { NavLink, Outlet, useNavigate, type NavLinkProps } from "react-router-do
 import { api, setToken } from "../api";
 
 const drawerWidth = 240;
+const TOOLBAR_HEIGHT = { xs: 56, sm: 64 };
 
 type NavItem = {
   to: string;
@@ -89,7 +90,7 @@ export function AppLayout() {
   );
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+    <Box sx={{ display: "flex", height: "100vh", overflow: "hidden" }}>
       <AppBar
         position="fixed"
         color="default"
@@ -155,14 +156,20 @@ export function AppLayout() {
 
       <Box
         component="main"
-        sx={{
+        sx={(theme) => ({
           flexGrow: 1,
           p: { xs: 1.5, sm: 2, md: 3 },
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mt: { xs: 7, sm: 8 },
           minWidth: 0,
-          overflowX: "hidden",
-        }}
+          overflowY: "auto",
+          overflowX: "clip",
+          mt: `${TOOLBAR_HEIGHT.xs}px`,
+          height: `calc(100vh - ${TOOLBAR_HEIGHT.xs}px)`,
+          [theme.breakpoints.up("sm")]: {
+            mt: `${TOOLBAR_HEIGHT.sm}px`,
+            height: `calc(100vh - ${TOOLBAR_HEIGHT.sm}px)`,
+          },
+        })}
       >
         <Outlet />
       </Box>
