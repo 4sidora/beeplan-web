@@ -1,19 +1,62 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import EditIcon from "@mui/icons-material/Edit";
+import SystemUpdateAltIcon from "@mui/icons-material/SystemUpdateAlt";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import Chip from "@mui/material/Chip";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
 import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import type { TelemetryPoint } from "../api";
+import { MAIN_PADDING_X, TOOLBAR_HEIGHT } from "../constants/layout";
+import { useStickyWithinMain } from "../hooks/useStickyWithinMain";
 import { formatLastSeen } from "../utils/formatLastSeen";
 import { isDeviceOnline } from "../utils/deviceOnline";
 import { DeviceStatusIndicators } from "./DeviceStatusIndicators";
 import type { HeaderAction } from "./ObjectCardHeader";
 
-function HeaderButton({ action }: { action: HeaderAction }) {
+function HeaderButton({ action, compact }: { action: HeaderAction; compact?: boolean }) {
+  if (compact) {
+    const icon =
+      action.variant === "contained" ? (
+        <EditIcon fontSize="small" />
+      ) : (
+        <SystemUpdateAltIcon fontSize="small" />
+      );
+    if (action.to) {
+      return (
+        <Tooltip title={action.label}>
+          <IconButton
+            component={RouterLink}
+            to={action.to}
+            size="small"
+            color={action.variant === "contained" ? "primary" : "default"}
+            onClick={action.onClick}
+            aria-label={action.label}
+          >
+            {icon}
+          </IconButton>
+        </Tooltip>
+      );
+    }
+    return (
+      <Tooltip title={action.label}>
+        <IconButton
+          size="small"
+          color={action.variant === "contained" ? "primary" : "default"}
+          onClick={action.onClick}
+          aria-label={action.label}
+        >
+          {icon}
+        </IconButton>
+      </Tooltip>
+    );
+  }
+
   if (action.to) {
     return (
       <Button
@@ -62,88 +105,110 @@ export function DetailStickyHeader({
   primaryAction,
   trailing,
 }: Props) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const { sentinelRef, headerRef, stuck, headerHeight } = useStickyWithinMain();
   const online = isDeviceOnline(lastSeenAt, wakeIntervalSec);
   const contactTooltip = formatLastSeen(lastSeenAt);
+  const pinned = isMobile && stuck;
+
+  const headerSx = {
+    zIndex: (t: typeof theme) => t.zIndex.appBar - 1,
+    bgcolor: "background.default",
+    borderBottom: 1,
+    borderColor: "divider",
+    mb: 2,
+    py: { xs: 0.75, sm: 1 },
+    px: MAIN_PADDING_X,
+    display: "flex",
+    alignItems: "center",
+    gap: { xs: 0.5, sm: 1.5 },
+    flexWrap: "nowrap" as const,
+    width: pinned ? "100%" : undefined,
+    ...(pinned
+      ? {
+          position: "fixed" as const,
+          top: TOOLBAR_HEIGHT.xs,
+          left: 0,
+          right: 0,
+        }
+      : {
+          position: "sticky" as const,
+          top: 0,
+        }),
+  };
 
   return (
-    <Box
-      sx={{
-        position: "sticky",
-        top: 0,
-        zIndex: (t) => t.zIndex.appBar - 1,
-        bgcolor: "background.default",
-        borderBottom: 1,
-        borderColor: "divider",
-        mb: 2,
-        py: 1,
-        display: "flex",
-        alignItems: "center",
-        gap: { xs: 0.75, sm: 1.5 },
-        flexWrap: { xs: "wrap", md: "nowrap" },
-      }}
-    >
-      <Tooltip title={backLabel}>
-        <IconButton
-          component={RouterLink}
-          to={backTo}
-          size="small"
-          aria-label={backLabel}
-          sx={{ flexShrink: 0 }}
-        >
-          <ArrowBackIcon />
-        </IconButton>
-      </Tooltip>
-
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-          flex: 1,
-          minWidth: 0,
-          overflow: "hidden",
-        }}
-      >
-        <Typography
-          variant={titleVariant}
-          component="h1"
-          noWrap
-          sx={{ flexShrink: 1, minWidth: 0, fontSize: { xs: "1.1rem", sm: undefined } }}
-        >
-          {title}
-        </Typography>
-        <Tooltip title={contactTooltip}>
-          <Chip
+    <>
+      <Box ref={sentinelRef} sx={{ height: 1, mb: -1 }} aria-hidden />
+      {pinned && headerHeight > 0 ? <Box sx={{ height: headerHeight, mb: 2 }} aria-hidden /> : null}
+      <Box ref={headerRef} sx={headerSx}>
+        <Tooltip title={backLabel}>
+          <IconButton
+            component={RouterLink}
+            to={backTo}
             size="small"
-            label={online ? "В сети" : "Офлайн"}
-            color={online ? "success" : "default"}
+            aria-label={backLabel}
             sx={{ flexShrink: 0 }}
-          />
+          >
+            <ArrowBackIcon />
+          </IconButton>
         </Tooltip>
-        <Box sx={{ flexShrink: 0, overflow: "hidden" }}>
-          <DeviceStatusIndicators recentTelemetry={recentTelemetry} iconsOnly />
+
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: { xs: 0.5, sm: 1 },
+            flex: 1,
+            minWidth: 0,
+            overflow: "hidden",
+          }}
+        >
+          <Typography
+            variant={titleVariant}
+            component="h1"
+            noWrap
+            sx={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: { xs: "1rem", sm: undefined },
+            }}
+          >
+            {title}
+          </Typography>
+          <Tooltip title={contactTooltip}>
+            <Chip
+              size="small"
+              label={online ? "В сети" : "Офлайн"}
+              color={online ? "success" : "default"}
+              sx={{
+                flexShrink: 0,
+                display: { xs: "none", sm: "flex" },
+              }}
+            />
+          </Tooltip>
+          <Box sx={{ flexShrink: 0, display: { xs: "none", md: "block" } }}>
+            <DeviceStatusIndicators recentTelemetry={recentTelemetry} iconsOnly />
+          </Box>
+        </Box>
+
+        {trailing}
+
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+            gap: 0.25,
+          }}
+        >
+          {secondaryActions.map((action) => (
+            <HeaderButton key={action.label} action={action} compact={isMobile} />
+          ))}
+          <HeaderButton action={primaryAction} compact={isMobile} />
         </Box>
       </Box>
-
-      {trailing}
-
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 0.5,
-          flexShrink: 0,
-          width: { xs: "100%", md: "auto" },
-          justifyContent: { xs: "flex-end", md: "flex-start" },
-          pl: { xs: 5, md: 0 },
-        }}
-      >
-        {secondaryActions.map((action) => (
-          <HeaderButton key={action.label} action={action} />
-        ))}
-        <HeaderButton action={primaryAction} />
-      </Box>
-    </Box>
+    </>
   );
 }

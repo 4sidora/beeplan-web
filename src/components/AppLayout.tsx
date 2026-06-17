@@ -22,9 +22,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate, type NavLinkProps } from "react-router-dom";
 import { api, setToken } from "../api";
+import { TOOLBAR_HEIGHT } from "../constants/layout";
 
 const drawerWidth = 240;
-const TOOLBAR_HEIGHT = { xs: 56, sm: 64 };
 
 type NavItem = {
   to: string;
@@ -90,7 +90,7 @@ export function AppLayout() {
   );
 
   return (
-    <Box sx={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+    <Box sx={{ display: "flex", minHeight: "100vh" }}>
       <AppBar
         position="fixed"
         color="default"
@@ -162,7 +162,8 @@ export function AppLayout() {
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           minWidth: 0,
           overflowY: "auto",
-          overflowX: "clip",
+          overflowX: "hidden",
+          WebkitOverflowScrolling: "touch",
           mt: `${TOOLBAR_HEIGHT.xs}px`,
           height: `calc(100vh - ${TOOLBAR_HEIGHT.xs}px)`,
           [theme.breakpoints.up("sm")]: {
