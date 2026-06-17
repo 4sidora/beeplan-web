@@ -77,57 +77,27 @@ export function EdgeDeviceDetailPage() {
     enabled: Number.isFinite(deviceId),
   });
 
-  const tempQuery = useQuery({
-    queryKey: ["edge-device-telemetry", deviceId, "temperature_c", fromIso, toIso],
-    queryFn: () =>
-      api.edgeDeviceTelemetry(deviceId, {
-        metric: "temperature_c",
-        from: fromIso,
-        to: toIso,
-        limit: 5000,
-      }),
-    enabled: Number.isFinite(deviceId),
-  });
-
-  const humQuery = useQuery({
-    queryKey: ["edge-device-telemetry", deviceId, "relative_humidity", fromIso, toIso],
-    queryFn: () =>
-      api.edgeDeviceTelemetry(deviceId, {
-        metric: "relative_humidity",
-        from: fromIso,
-        to: toIso,
-        limit: 5000,
-      }),
-    enabled: Number.isFinite(deviceId),
-  });
-
-  const signalQuery = useQuery({
-    queryKey: ["edge-device-telemetry", deviceId, "signal_level", fromIso, toIso],
-    queryFn: () =>
-      api.edgeDeviceTelemetry(deviceId, {
-        metric: "signal_level",
-        from: fromIso,
-        to: toIso,
-        limit: 5000,
-      }),
-    enabled: Number.isFinite(deviceId),
-  });
-
-  const batteryQuery = useQuery({
-    queryKey: ["edge-device-telemetry", deviceId, "battery_voltage", fromIso, toIso],
-    queryFn: () =>
-      api.edgeDeviceTelemetry(deviceId, {
-        metric: "battery_voltage",
-        from: fromIso,
-        to: toIso,
-        limit: 5000,
-      }),
-    enabled: Number.isFinite(deviceId),
-  });
+  const telemetryPoints = telemetry.data ?? [];
+  const tempPoints = useMemo(
+    () => telemetryPoints.filter((p) => p.metric === "temperature_c"),
+    [telemetryPoints],
+  );
+  const humPoints = useMemo(
+    () => telemetryPoints.filter((p) => p.metric === "relative_humidity"),
+    [telemetryPoints],
+  );
+  const signalPoints = useMemo(
+    () => telemetryPoints.filter((p) => p.metric === "signal_level"),
+    [telemetryPoints],
+  );
+  const batteryPoints = useMemo(
+    () => telemetryPoints.filter((p) => p.metric === "battery_voltage"),
+    [telemetryPoints],
+  );
 
   const telemetryTable = useMemo(
-    () => pivotTelemetryByTime(telemetry.data ?? []),
-    [telemetry.data],
+    () => pivotTelemetryByTime(telemetryPoints),
+    [telemetryPoints],
   );
 
   if (!Number.isFinite(deviceId)) {
@@ -152,8 +122,8 @@ export function EdgeDeviceDetailPage() {
   const backToConc = concentratorId != null ? `/devices/${concentratorId}` : "/devices";
   const flashUrl = `/devices/install/edge?edge_device_id=${d.id}&concentrator_id=${d.concentrator_id}${apiaryId != null ? `&apiary_id=${apiaryId}` : ""}`;
 
-  const tempChart = pointsToSingleSeries(tempQuery.data ?? [], "temperature_c", "temperature");
-  const humChart = pointsToSingleSeries(humQuery.data ?? [], "relative_humidity", "humidity");
+  const tempChart = pointsToSingleSeries(tempPoints, "temperature_c", "temperature");
+  const humChart = pointsToSingleSeries(humPoints, "relative_humidity", "humidity");
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru">
@@ -163,11 +133,7 @@ export function EdgeDeviceDetailPage() {
         title={title}
         lastSeenAt={d.last_seen_at}
         wakeIntervalSec={d.wake_interval_sec ?? 3600}
-        recentTelemetry={[
-          ...(signalQuery.data ?? []),
-          ...(batteryQuery.data ?? []),
-          ...(d.recent_telemetry ?? []),
-        ]}
+        recentTelemetry={[...signalPoints, ...batteryPoints, ...(d.recent_telemetry ?? [])]}
         secondaryActions={[{ label: "Перепрошить", to: flashUrl, variant: "outlined" }]}
         primaryAction={{
           label: "Редактировать",
@@ -255,7 +221,7 @@ export function EdgeDeviceDetailPage() {
       <Typography variant="h6" sx={{ mb: 1 }}>
         Датчики улья
       </Typography>
-      {tempQuery.isLoading || humQuery.isLoading ? (
+      {telemetry.isLoading ? (
         <CircularProgress sx={{ mb: 3 }} />
       ) : (
         <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -291,9 +257,9 @@ export function EdgeDeviceDetailPage() {
         Состояние устройства
       </Typography>
       <DeviceStatusCharts
-        signalPoints={signalQuery.data}
-        batteryPoints={batteryQuery.data}
-        loading={signalQuery.isLoading || batteryQuery.isLoading}
+        signalPoints={signalPoints}
+        batteryPoints={batteryPoints}
+        loading={telemetry.isLoading}
         periodFrom={fromIso}
         periodTo={toIso}
         wakeIntervalSec={d.wake_interval_sec ?? 3600}
