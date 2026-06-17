@@ -1,5 +1,5 @@
 /** Ограничение параллельных запросов к API (лимит браузера ~6 на origin). */
-const MAX_IN_FLIGHT = 4;
+const MAX_IN_FLIGHT = 3;
 let inFlight = 0;
 const waiters: Array<() => void> = [];
 

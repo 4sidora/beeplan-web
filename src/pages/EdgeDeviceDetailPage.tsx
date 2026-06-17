@@ -31,6 +31,7 @@ import { formatTelemetryValue } from "../utils/formatTelemetryValue";
 import { metricLabel } from "../utils/metricLabels";
 import { formatTelemetrySlot, formatWakeInterval } from "../utils/edgeTiming";
 import { pivotTelemetryByTime, pointsToSingleSeries } from "../utils/telemetry";
+import { toUserFacingError } from "../utils/userFacingError";
 
 function ParamRow({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -104,23 +105,13 @@ export function EdgeDeviceDetailPage() {
     return <Typography color="error">Некорректный ID устройства</Typography>;
   }
 
-  if (device.isLoading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (!device.data) {
-    return <Typography color="text.secondary">Устройство не найдено</Typography>;
-  }
-
   const d = device.data;
   const apiaryId = concentrator.data?.apiary_id;
-  const title = d.name || d.public_id;
+  const title = d?.name || d?.public_id || "Устройство";
   const backToConc = concentratorId != null ? `/devices/${concentratorId}` : "/devices";
-  const flashUrl = `/devices/install/edge?edge_device_id=${d.id}&concentrator_id=${d.concentrator_id}${apiaryId != null ? `&apiary_id=${apiaryId}` : ""}`;
+  const flashUrl = d
+    ? `/devices/install/edge?edge_device_id=${d.id}&concentrator_id=${d.concentrator_id}${apiaryId != null ? `&apiary_id=${apiaryId}` : ""}`
+    : "#";
 
   const tempChart = pointsToSingleSeries(tempPoints, "temperature_c", "temperature");
   const humChart = pointsToSingleSeries(humPoints, "relative_humidity", "humidity");
@@ -131,21 +122,41 @@ export function EdgeDeviceDetailPage() {
         backTo={backToConc}
         backLabel="К базовой станции"
         title={title}
-        lastSeenAt={d.last_seen_at}
-        wakeIntervalSec={d.wake_interval_sec ?? 3600}
-        recentTelemetry={[...signalPoints, ...batteryPoints, ...(d.recent_telemetry ?? [])]}
-        secondaryActions={[{ label: "Перепрошить", to: flashUrl, variant: "outlined" }]}
+        lastSeenAt={d?.last_seen_at}
+        wakeIntervalSec={d?.wake_interval_sec ?? 3600}
+        recentTelemetry={
+          d
+            ? [...signalPoints, ...batteryPoints, ...(d.recent_telemetry ?? [])]
+            : undefined
+        }
+        secondaryActions={
+          d ? [{ label: "Перепрошить", to: flashUrl, variant: "outlined" }] : []
+        }
         primaryAction={{
           label: "Редактировать",
-          to: `/devices/edge/${d.id}/edit`,
+          to: d ? `/devices/edge/${d.id}/edit` : "#",
           variant: "contained",
         }}
       />
 
-      <Box sx={{ mb: 3 }}>
-        <Card variant="outlined">
-          <CardContent>
-            <Grid container spacing={2}>
+      {device.isError ? (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {toUserFacingError(device.error, "Не удалось загрузить устройство")}
+        </Typography>
+      ) : null}
+
+      {device.isLoading && !d ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+          <CircularProgress />
+        </Box>
+      ) : !d ? (
+        <Typography color="text.secondary">Устройство не найдено</Typography>
+      ) : (
+        <>
+          <Box sx={{ mb: 3 }}>
+            <Card variant="outlined">
+              <CardContent>
+                <Grid container spacing={2}>
             <ParamRow
               label="Public ID"
               value={
@@ -204,12 +215,12 @@ export function EdgeDeviceDetailPage() {
                 )
               }
             />
-            </Grid>
-          </CardContent>
-        </Card>
-      </Box>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Box>
 
-      <PeriodSelector
+          <PeriodSelector
         preset={preset}
         onPresetChange={setPreset}
         from={from}
@@ -306,6 +317,8 @@ export function EdgeDeviceDetailPage() {
             </Table>
           </TableContainer>
         </Paper>
+      )}
+        </>
       )}
     </LocalizationProvider>
   );

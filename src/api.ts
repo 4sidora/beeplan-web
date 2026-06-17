@@ -26,7 +26,30 @@ function handleSessionExpired(): void {
   window.location.replace("/login");
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableNetworkError(e: unknown): boolean {
+  return e instanceof TypeError;
+}
+
 async function apiFetch<T>(path: string, init: RequestInit = {}, timeoutMs = 25_000): Promise<T> {
+  const maxAttempts = 3;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      return await apiFetchOnce<T>(path, init, timeoutMs);
+    } catch (e) {
+      lastError = e;
+      if (!isRetryableNetworkError(e) || attempt === maxAttempts - 1) throw e;
+      await sleep(400 * (attempt + 1));
+    }
+  }
+  throw lastError;
+}
+
+async function apiFetchOnce<T>(path: string, init: RequestInit = {}, timeoutMs = 25_000): Promise<T> {
   return withApiSlot(async () => {
     const headers = new Headers(init.headers);
     headers.set("Accept", "application/json");

@@ -1,9 +1,13 @@
+import type { ReactNode } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
 import CircularProgress from "@mui/material/CircularProgress";
+import Collapse from "@mui/material/Collapse";
 import FormControl from "@mui/material/FormControl";
 import Grid from "@mui/material/Grid";
 import InputLabel from "@mui/material/InputLabel";
@@ -16,11 +20,11 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import "dayjs/locale/ru";
 import { useState } from "react";
-import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
-import { ConcentratorDetailHeader } from "../components/ConcentratorDetailHeader";
 import { DetailStickyHeader } from "../components/DetailStickyHeader";
 import { DeviceStatusDetails } from "../components/DeviceStatusDetails";
+import { DeviceStatusToggle } from "../components/DeviceStatusToggle";
 import { useLocalTelemetryPeriod } from "../hooks/useLocalTelemetryPeriod";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EdgeDeviceCard } from "../components/EdgeDeviceCard";
@@ -28,6 +32,17 @@ import { FormDialog } from "../components/FormDialog";
 import { useSnackbar } from "../components/SnackbarProvider";
 import { EDGE_DEVICE_NAME_PLACEHOLDER } from "../constants/edgeDevice";
 import { toUserFacingError } from "../utils/userFacingError";
+
+function ParamRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <Grid size={{ xs: 12, sm: 6 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+        {label}
+      </Typography>
+      <Typography variant="body1">{value}</Typography>
+    </Grid>
+  );
+}
 
 function colonyStatusLabel(
   colonyId: number | null,
@@ -85,7 +100,7 @@ export function ConcentratorDetailPage() {
   const edgeDevices = useQuery({
     queryKey: ["edge-devices", "concentrator", concentratorId],
     queryFn: () => api.edgeDevicesByConcentrator(concentratorId),
-    enabled: Number.isFinite(concentratorId),
+    enabled: Number.isFinite(concentratorId) && concentrator.isSuccess,
     refetchInterval: 60_000,
   });
 
@@ -171,91 +186,135 @@ export function ConcentratorDetailPage() {
     return <Typography color="error">Некорректный ID базовой станции</Typography>;
   }
 
-  if (concentrator.isLoading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (!concentrator.data) {
-    return <Typography color="text.secondary">Базовая станция не найдена</Typography>;
-  }
-
   const conc = concentrator.data;
-  const flashUrl = `/devices/install/gateway?concentrator_id=${conc.id}&apiary_id=${conc.apiary_id}`;
+  const flashUrl = conc
+    ? `/devices/install/gateway?concentrator_id=${conc.id}&apiary_id=${conc.apiary_id}`
+    : "#";
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru">
       <DetailStickyHeader
         backTo="/devices"
         backLabel="К списку базовых станций"
-        title={conc.name}
-        lastSeenAt={conc.last_seen_at}
-        recentTelemetry={conc.recent_telemetry}
-        secondaryActions={[{ label: "Перепрошить", to: flashUrl, variant: "outlined" }]}
-        primaryAction={{ label: "Редактировать", onClick: openEditName, variant: "contained" }}
-      />
-
-      <ConcentratorDetailHeader
-        item={conc}
-        statusExpanded={statusExpanded}
-        onStatusToggle={() => setStatusExpanded((v) => !v)}
-        statusDetails={
-          <DeviceStatusDetails
-            signalPoints={signalQuery.data}
-            batteryPoints={batteryQuery.data}
-            chartsLoading={signalQuery.isLoading || batteryQuery.isLoading}
-            compact
-            preset={preset}
-            onPresetChange={setPreset}
-            from={from}
-            to={to}
-            onFromChange={setFrom}
-            onToChange={setTo}
-          />
+        title={conc?.name ?? "Базовая станция"}
+        lastSeenAt={conc?.last_seen_at}
+        recentTelemetry={conc?.recent_telemetry}
+        secondaryActions={
+          conc
+            ? [{ label: "Перепрошить", to: flashUrl, variant: "outlined" }]
+            : []
         }
+        primaryAction={{
+          label: "Редактировать",
+          onClick: openEditName,
+          variant: "contained",
+        }}
       />
 
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2, gap: 1, flexWrap: "wrap" }}>
-        <Typography variant="h6">Подключенные устройства</Typography>
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-          <Button
-            variant="outlined"
-            size="small"
-            disabled={(edgeDevices.data ?? []).length === 0}
-            onClick={() => setWakeBulkOpen(true)}
-          >
-            Интервал замера для всех
-          </Button>
-          <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={openCreateDevice}>
-            Добавить
-          </Button>
-        </Box>
-      </Box>
-
-      {edgeDevices.isError ? (
+      {concentrator.isError ? (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {toUserFacingError(edgeDevices.error, "Не удалось загрузить устройства")}
+          {toUserFacingError(concentrator.error, "Не удалось загрузить базовую станцию")}
         </Alert>
       ) : null}
 
-      {edgeDevices.isLoading ? (
-        <CircularProgress size={28} />
-      ) : (edgeDevices.data ?? []).length === 0 ? (
-        <Typography color="text.secondary">Нет устройств на этой базовой станции.</Typography>
+      {concentrator.isLoading && !conc ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+          <CircularProgress />
+        </Box>
+      ) : !conc ? (
+        <Typography color="text.secondary">Базовая станция не найдена</Typography>
       ) : (
-        <Grid container spacing={2}>
-          {(edgeDevices.data ?? []).map((dev) => (
-            <Grid key={dev.id} size={{ xs: 12, sm: 6, lg: 4 }}>
-              <EdgeDeviceCard
-                item={dev}
-                colonyLabel={colonyStatusLabel(dev.current_colony_id, colonies.data)}
-              />
+        <>
+          <Box sx={{ mb: 3 }}>
+            <Card variant="outlined">
+              <CardContent>
+                <Grid container spacing={2}>
+                  <ParamRow label="Пасека" value={conc.apiary_name ?? `#${conc.apiary_id}`} />
+                  <ParamRow
+                    label="MAC gateway"
+                    value={
+                      <Typography component="span" sx={{ fontFamily: "monospace", fontSize: 14 }}>
+                        {conc.gateway_mac ?? "не зарегистрирован"}
+                      </Typography>
+                    }
+                  />
+                  <ParamRow label="Прошивка" value={conc.firmware_version ?? "—"} />
+                  <ParamRow label="Ульевых устройств" value={conc.edge_device_count ?? 0} />
+                  <Grid size={{ xs: 12 }}>
+                    <DeviceStatusToggle
+                      recentTelemetry={conc.recent_telemetry}
+                      expanded={statusExpanded}
+                      onToggle={() => setStatusExpanded((v) => !v)}
+                    />
+                  </Grid>
+                </Grid>
+                <Collapse in={statusExpanded}>
+                  <DeviceStatusDetails
+                    signalPoints={signalQuery.data}
+                    batteryPoints={batteryQuery.data}
+                    chartsLoading={signalQuery.isLoading || batteryQuery.isLoading}
+                    compact
+                    preset={preset}
+                    onPresetChange={setPreset}
+                    from={from}
+                    to={to}
+                    onFromChange={setFrom}
+                    onToChange={setTo}
+                  />
+                </Collapse>
+              </CardContent>
+            </Card>
+          </Box>
+
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              mb: 2,
+              gap: 1,
+              flexWrap: "wrap",
+            }}
+          >
+            <Typography variant="h6">Подключенные устройства</Typography>
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+              <Button
+                variant="outlined"
+                size="small"
+                disabled={(edgeDevices.data ?? []).length === 0}
+                onClick={() => setWakeBulkOpen(true)}
+              >
+                Интервал замера для всех
+              </Button>
+              <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={openCreateDevice}>
+                Добавить
+              </Button>
+            </Box>
+          </Box>
+
+          {edgeDevices.isError ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {toUserFacingError(edgeDevices.error, "Не удалось загрузить устройства")}
+            </Alert>
+          ) : null}
+
+          {edgeDevices.isLoading ? (
+            <CircularProgress size={28} />
+          ) : (edgeDevices.data ?? []).length === 0 ? (
+            <Typography color="text.secondary">Нет устройств на этой базовой станции.</Typography>
+          ) : (
+            <Grid container spacing={2}>
+              {(edgeDevices.data ?? []).map((dev) => (
+                <Grid key={dev.id} size={{ xs: 12, sm: 6, lg: 4 }}>
+                  <EdgeDeviceCard
+                    item={dev}
+                    colonyLabel={colonyStatusLabel(dev.current_colony_id, colonies.data)}
+                  />
+                </Grid>
+              ))}
             </Grid>
-          ))}
-        </Grid>
+          )}
+        </>
       )}
 
       <FormDialog
