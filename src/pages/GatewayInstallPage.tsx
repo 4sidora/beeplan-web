@@ -26,7 +26,7 @@ import {
 } from "../constants/boards";
 import { useApiaryParam } from "../hooks/useApiaryParam";
 
-const DEFAULT_DEVICE_API_URL = "http://192.168.1.42:8000";
+const DEFAULT_DEVICE_API_URL = "http://api.beeplan.tech";
 
 function defaultDeviceApiUrl(): string {
   const fromEnv = import.meta.env.VITE_DEVICE_API_URL?.replace(/\/$/, "");
