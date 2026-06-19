@@ -22,11 +22,11 @@ export const FIRMWARE_BOARDS: FirmwareBoard[] = [
     id: "ttgo-t-call-v14",
     label: "LILYGO® TTGO T-Call V1.4",
     description:
-      "Базовая станция на ESP32 с модемом SIM800L: Wi-Fi uplink в BeePlan API и приём телеметрии от ульев по ESP-NOW.",
+      "Базовая станция ESP32 + SIM800L: uplink в API по Wi‑Fi или сотовой связи, приём телеметрии от ульев по ESP-NOW.",
     features: [
       "MCU: ESP32-WROVER-B, 4 MB PSRAM",
-      "Сотовый модем: SIMCom SIM800L (2G GSM/GPRS)",
-      "Wi-Fi 2.4 GHz — uplink в API (STA)",
+      "Сотовый модем: SIMCom SIM800L (2G GSM/GPRS) — uplink в API",
+      "Wi-Fi 2.4 GHz — uplink в API или канал ESP-NOW",
       "ESP-NOW Long Range — приём от edge-устройств",
       "USB Type-C, UART-программирование (CP210x)",
       "Слот nano-SIM, антенны Wi-Fi и GSM (U.FL/SMA)",

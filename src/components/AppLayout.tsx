@@ -1,4 +1,3 @@
-import HiveIcon from "@mui/icons-material/Hive";
 import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import YardIcon from "@mui/icons-material/Yard";
@@ -22,6 +21,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate, type NavLinkProps } from "react-router-dom";
 import { api, setToken } from "../api";
+import { BeePlanLogo } from "./BeePlanLogo";
 import { TOOLBAR_HEIGHT } from "../constants/layout";
 
 const drawerWidth = 240;
@@ -57,11 +57,8 @@ export function AppLayout() {
 
   const drawer = (
     <Box>
-      <Toolbar sx={{ gap: 1 }}>
-        <HiveIcon color="primary" />
-        <Typography variant="h6" noWrap>
-          BeePlan
-        </Typography>
+      <Toolbar sx={{ gap: 1, minHeight: { xs: 56, sm: 64 } }}>
+        <BeePlanLogo height={34} />
       </Toolbar>
       <Divider />
       <List>
@@ -106,14 +103,17 @@ export function AppLayout() {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap sx={{ flexGrow: 1, minWidth: 0 }}>
-            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+          <Box sx={{ flexGrow: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 1.25 }}>
+            <BeePlanLogo height={38} />
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              noWrap
+              sx={{ display: { xs: "none", sm: "block" }, lineHeight: 1.2 }}
+            >
               Мониторинг пчелиных семей
-            </Box>
-            <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
-              BeePlan
-            </Box>
-          </Typography>
+            </Typography>
+          </Box>
           <Typography variant="body2" color="text.secondary" sx={{ mr: 2, display: { xs: "none", md: "block" } }}>
             {me.data?.email}
           </Typography>

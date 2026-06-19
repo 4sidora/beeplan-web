@@ -3,7 +3,11 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Checkbox from "@mui/material/Checkbox";
+import FormControl from "@mui/material/FormControl";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import FormLabel from "@mui/material/FormLabel";
+import Radio from "@mui/material/Radio";
+import RadioGroup from "@mui/material/RadioGroup";
 import Paper from "@mui/material/Paper";
 import Step from "@mui/material/Step";
 import StepLabel from "@mui/material/StepLabel";
@@ -56,8 +60,13 @@ export function GatewayInstallPage() {
   const concentratorId = useMemo(() => parseConcentratorId(searchParams), [searchParams]);
 
   const [activeStep, setActiveStep] = useState(0);
+  const [uplinkMode, setUplinkMode] = useState<"wifi" | "cellular">("wifi");
   const [wifiSsid, setWifiSsid] = useState("");
   const [wifiPassword, setWifiPassword] = useState("");
+  const [gatewayWifiChannel, setGatewayWifiChannel] = useState(6);
+  const [cellularApn, setCellularApn] = useState("");
+  const [cellularUser, setCellularUser] = useState("");
+  const [cellularPass, setCellularPass] = useState("");
   const [apiBaseUrl, setApiBaseUrl] = useState(deviceApiUrl);
   const [board, setBoard] = useState<FirmwareBoardId>(() => defaultBoardForProfile("gateway"));
   const [debugSerial, setDebugSerial] = useState(true);
@@ -82,8 +91,13 @@ export function GatewayInstallPage() {
         device_type: "gateway",
         board,
         concentrator_id: concentratorId!,
-        wifi_ssid: wifiSsid,
-        wifi_password: wifiPassword,
+        uplink_mode: uplinkMode,
+        wifi_ssid: uplinkMode === "wifi" ? wifiSsid : undefined,
+        wifi_password: uplinkMode === "wifi" ? wifiPassword : undefined,
+        gateway_wifi_channel: uplinkMode === "cellular" ? gatewayWifiChannel : undefined,
+        cellular_apn: uplinkMode === "cellular" ? cellularApn : undefined,
+        cellular_user: uplinkMode === "cellular" ? cellularUser || undefined : undefined,
+        cellular_pass: uplinkMode === "cellular" ? cellularPass || undefined : undefined,
         api_base_url: apiBaseUrl,
         debug_serial: debugSerial,
       }),
@@ -120,6 +134,10 @@ export function GatewayInstallPage() {
   const conc = concentrator.data;
   const selectedBoard = boardById(board);
   const boardReady = selectedBoard?.firmwareAvailable ?? false;
+  const paramsValid =
+    uplinkMode === "wifi"
+      ? Boolean(wifiSsid && wifiPassword)
+      : Boolean(cellularApn && gatewayWifiChannel >= 1 && gatewayWifiChannel <= 13);
 
   if (concentratorId == null) {
     return (
@@ -209,22 +227,76 @@ export function GatewayInstallPage() {
 
         {activeStep === 1 && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <TextField
-              label="Wi‑Fi SSID"
-              value={wifiSsid}
-              onChange={(e) => setWifiSsid(e.target.value)}
-              fullWidth
-            />
-            <TextField
-              label="Wi‑Fi пароль"
-              type="password"
-              value={wifiPassword}
-              onChange={(e) => setWifiPassword(e.target.value)}
-              fullWidth
-            />
+            <FormControl>
+              <FormLabel id="uplink-mode-label">Передача данных на сервер</FormLabel>
+              <RadioGroup
+                aria-labelledby="uplink-mode-label"
+                value={uplinkMode}
+                onChange={(e) => setUplinkMode(e.target.value as "wifi" | "cellular")}
+              >
+                <FormControlLabel value="wifi" control={<Radio />} label="Wi‑Fi" />
+                <FormControlLabel
+                  value="cellular"
+                  control={<Radio />}
+                  label="Сотовая связь (SIM800, TTGO T-Call)"
+                />
+              </RadioGroup>
+            </FormControl>
+
+            {uplinkMode === "wifi" ? (
+              <>
+                <TextField
+                  label="Wi‑Fi SSID"
+                  value={wifiSsid}
+                  onChange={(e) => setWifiSsid(e.target.value)}
+                  fullWidth
+                />
+                <TextField
+                  label="Wi‑Fi пароль"
+                  type="password"
+                  value={wifiPassword}
+                  onChange={(e) => setWifiPassword(e.target.value)}
+                  fullWidth
+                />
+              </>
+            ) : (
+              <>
+                <TextField
+                  label="APN оператора"
+                  value={cellularApn}
+                  onChange={(e) => setCellularApn(e.target.value)}
+                  placeholder="internet"
+                  fullWidth
+                  required
+                />
+                <TextField
+                  label="Логин GPRS (если нужен)"
+                  value={cellularUser}
+                  onChange={(e) => setCellularUser(e.target.value)}
+                  fullWidth
+                />
+                <TextField
+                  label="Пароль GPRS (если нужен)"
+                  type="password"
+                  value={cellularPass}
+                  onChange={(e) => setCellularPass(e.target.value)}
+                  fullWidth
+                />
+                <TextField
+                  label="Канал Wi‑Fi для ESP-NOW"
+                  type="number"
+                  slotProps={{ htmlInput: { min: 1, max: 13 } }}
+                  helperText="Должен совпадать с каналом сети edge-устройств (обычно 1–13)"
+                  value={gatewayWifiChannel}
+                  onChange={(e) => setGatewayWifiChannel(Number(e.target.value))}
+                  fullWidth
+                />
+              </>
+            )}
+
             <TextField
               label="URL API для устройства"
-              helperText="IP-адрес компьютера с API в вашей локальной сети"
+              helperText="Публичный адрес API (например https://api.beeplan.tech)"
               value={apiBaseUrl}
               onChange={(e) => setApiBaseUrl(e.target.value)}
               fullWidth
@@ -239,7 +311,7 @@ export function GatewayInstallPage() {
               <Button onClick={() => setActiveStep(0)}>Назад</Button>
               <Button
                 variant="contained"
-                disabled={!wifiSsid || !wifiPassword || startBuild.isPending}
+                disabled={!paramsValid || startBuild.isPending}
                 onClick={() => startBuild.mutate()}
               >
                 Собрать прошивку
@@ -278,7 +350,9 @@ export function GatewayInstallPage() {
             <Alert severity="success">Прошивка готова. Подключите ESP32 и нажмите кнопку ниже.</Alert>
             <EspWebInstallButton manifestUrl={build.manifest_url} />
             <Alert severity="info">
-              После прошивки и подключения к Wi‑Fi статус «онлайн» появится в списке устройств.
+              {uplinkMode === "wifi"
+                ? "После прошивки и подключения к Wi‑Fi статус «онлайн» появится в списке устройств."
+                : "После прошивки вставьте SIM с активным интернетом. Статус «онлайн» появится после первого heartbeat."}
             </Alert>
             <Button
               variant="contained"

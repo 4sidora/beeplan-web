@@ -29,7 +29,7 @@ import { formatDateTime } from "../utils/formatDateTime";
 import { formatLastSeen } from "../utils/formatLastSeen";
 import { formatTelemetryValue } from "../utils/formatTelemetryValue";
 import { metricLabel } from "../utils/metricLabels";
-import { formatTelemetrySlot, formatWakeInterval } from "../utils/edgeTiming";
+import { formatWakeInterval } from "../utils/edgeTiming";
 import { pivotTelemetryByTime, pointsToSingleSeries } from "../utils/telemetry";
 import { toUserFacingError } from "../utils/userFacingError";
 
@@ -175,10 +175,6 @@ export function EdgeDeviceDetailPage() {
               }
             />
             <ParamRow
-              label="TDMA-слот"
-              value={formatTelemetrySlot(d.telemetry_slot_sec, d.wake_interval_sec)}
-            />
-            <ParamRow
               label="Wi‑Fi канал"
               value={
                 concentrator.data?.wifi_channel != null
@@ -298,8 +294,8 @@ export function EdgeDeviceDetailPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {telemetryTable.rows.map((row) => (
-                  <TableRow key={row.ts}>
+                {telemetryTable.rows.map((row, idx) => (
+                  <TableRow key={`${row.ts}-${idx}`}>
                     <TableCell sx={{ whiteSpace: "nowrap", fontWeight: 500 }}>
                       {formatDateTime(row.ts)}
                     </TableCell>

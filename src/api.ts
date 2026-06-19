@@ -346,8 +346,6 @@ export const api = {
   edgeDevicesByConcentrator: (concentratorId: number) =>
     fetchEdgeDevicesByConcentrator(concentratorId),
   edgeDevice: (id: number) => apiFetch<EdgeDevice>(`/v1/edge-devices/${id}`),
-  ensureEdgeTelemetrySlot: (id: number) =>
-    apiFetch<EdgeDevice>(`/v1/edge-devices/${id}/ensure-telemetry-slot`, { method: "POST" }),
   edgeDeviceTelemetry: (deviceId: number, params?: TelemetryParams) =>
     apiFetch<TelemetryPoint[]>(
       `/v1/edge-devices/${encodeURIComponent(String(deviceId))}/telemetry${telemetryQuery(params)}`,
@@ -396,9 +394,14 @@ export const api = {
     board?: string;
     concentrator_id: number;
     edge_device_id?: number | null;
+    uplink_mode?: "wifi" | "cellular";
     wifi_ssid?: string;
     wifi_password?: string;
     api_base_url?: string;
+    gateway_wifi_channel?: number;
+    cellular_apn?: string;
+    cellular_user?: string;
+    cellular_pass?: string;
     wake_interval_sec?: number;
     debug_serial?: boolean;
   }) =>

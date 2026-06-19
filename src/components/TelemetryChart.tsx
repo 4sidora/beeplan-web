@@ -18,6 +18,7 @@ import {
   DATA_GAP_AREA_PROPS,
   findDataGaps,
   formatChartLabel,
+  chartXAxisProps,
   insertGapBreaks,
   resolvePeriodBounds,
 } from "../utils/telemetry";
@@ -104,6 +105,7 @@ export function TelemetryChart(props: Props) {
   }, [data, gaps, props]);
 
   const xDomain = useXDomain(chartData, periodFromMs, periodToMs);
+  const xAxis = chartXAxisProps(periodFrom, periodTo);
 
   return (
     <Paper sx={{ p: 2, mb: 2 }}>
@@ -130,9 +132,12 @@ export function TelemetryChart(props: Props) {
                 type="number"
                 domain={xDomain}
                 scale="time"
-                minTickGap={32}
+                minTickGap={xAxis.minTickGap}
+                height={xAxis.height}
+                angle={xAxis.angle}
+                textAnchor={xAxis.textAnchor}
                 tick={{ fontSize: 11 }}
-                tickFormatter={(ts) => formatChartLabel(ts as number)}
+                tickFormatter={xAxis.tickFormatter}
               />
               <YAxis
                 domain={["auto", "auto"]}

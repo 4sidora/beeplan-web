@@ -119,8 +119,7 @@ export function DetailStickyHeader({
         px: MAIN_PADDING_X,
         display: "flex",
         alignItems: "center",
-        gap: { xs: 0.5, sm: 1.5 },
-        flexWrap: "nowrap",
+        gap: { xs: 0.5, sm: 1 },
       }}
     >
       <Tooltip title={backLabel}>
@@ -137,11 +136,11 @@ export function DetailStickyHeader({
 
       <Box
         sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: { xs: 0.5, sm: 1 },
           flex: 1,
           minWidth: 0,
+          display: "flex",
+          alignItems: "center",
+          gap: { xs: 0.5, sm: 0.75 },
           overflow: "hidden",
         }}
       >
@@ -150,35 +149,39 @@ export function DetailStickyHeader({
           component="h1"
           noWrap
           sx={{
-            flex: 1,
             minWidth: 0,
+            flexShrink: 1,
             fontSize: { xs: "1rem", sm: undefined },
           }}
         >
           {title}
         </Typography>
-        {isMobile ? (
-          <>
-            <DeviceOnlineDot lastSeenAt={lastSeenAt} wakeIntervalSec={wakeIntervalSec} />
-            <Box sx={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+            flexShrink: 0,
+          }}
+        >
+          {isMobile ? (
+            <>
+              <DeviceOnlineDot lastSeenAt={lastSeenAt} wakeIntervalSec={wakeIntervalSec} />
               <DeviceStatusIndicators recentTelemetry={recentTelemetry} iconsOnly />
-            </Box>
-          </>
-        ) : (
-          <>
-            <Tooltip title={contactTooltip}>
-              <Chip
-                size="small"
-                label={online ? "В сети" : "Офлайн"}
-                color={online ? "success" : "default"}
-                sx={{ flexShrink: 0 }}
-              />
-            </Tooltip>
-            <Box sx={{ flexShrink: 0 }}>
+            </>
+          ) : (
+            <>
+              <Tooltip title={contactTooltip}>
+                <Chip
+                  size="small"
+                  label={online ? "В сети" : "Офлайн"}
+                  color={online ? "success" : "default"}
+                />
+              </Tooltip>
               <DeviceStatusIndicators recentTelemetry={recentTelemetry} iconsOnly />
-            </Box>
-          </>
-        )}
+            </>
+          )}
+        </Box>
       </Box>
 
       {trailing}
@@ -189,6 +192,7 @@ export function DetailStickyHeader({
           alignItems: "center",
           flexShrink: 0,
           gap: 0.25,
+          ml: "auto",
         }}
       >
         {visibleSecondary.map((action) => (

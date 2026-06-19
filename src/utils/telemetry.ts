@@ -34,6 +34,39 @@ export function formatChartLabel(ts: string | number): string {
   });
 }
 
+/** Короткие подписи оси X в зависимости от длины периода. */
+export function formatChartAxisLabel(ts: string | number, periodMs: number): string {
+  const d = typeof ts === "number" ? new Date(ts) : new Date(ts);
+  const hours = periodMs / (3600 * 1000);
+  if (hours <= 25) {
+    return d.toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  }
+  if (hours <= 24 * 8) {
+    return d.toLocaleString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+    });
+  }
+  return d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit" });
+}
+
+export function chartXAxisProps(periodFrom?: string | number, periodTo?: string | number) {
+  const { periodFromMs, periodToMs } = resolvePeriodBounds(periodFrom, periodTo);
+  const fromMs = periodFromMs ?? 0;
+  const toMs = periodToMs ?? Date.now();
+  const periodMs = Math.max(1, toMs - fromMs);
+  const dense = periodMs > 25 * 3600 * 1000;
+  return {
+    periodMs,
+    minTickGap: dense ? 56 : 40,
+    angle: dense ? -35 : 0,
+    textAnchor: dense ? ("end" as const) : ("middle" as const),
+    height: dense ? 52 : 30,
+    tickFormatter: (ts: number) => formatChartAxisLabel(ts, periodMs),
+  };
+}
+
 export type DataGap = {
   fromTs: number;
   toTs: number;
@@ -284,29 +317,55 @@ export function sortTelemetryTableMetrics(metrics: Iterable<string>): string[] {
   return [...orderedPrimary, ...trailing];
 }
 
-/** Одна строка на каждый момент времени, метрики — в колонках (новые сверху). */
+/** Одна строка на каждый замер; при совпадении ts — отдельные строки, не схлопывать. */
 export function pivotTelemetryByTime(points: TelemetryPoint[]): {
   rows: TelemetryTableRow[];
   metrics: string[];
 } {
-  const byTs = new Map<string, Record<string, unknown>>();
   const metricsSet = new Set<string>();
-
   for (const point of points) {
-    let values = byTs.get(point.ts);
-    if (!values) {
-      values = {};
-      byTs.set(point.ts, values);
-    }
-    values[point.metric] = point.value;
     metricsSet.add(point.metric);
   }
-
   const metrics = sortTelemetryTableMetrics(metricsSet);
 
-  const rows = [...byTs.entries()]
-    .sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime())
-    .map(([ts, values]) => ({ ts, values }));
+  const sorted = [...points].sort(
+    (a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime(),
+  );
+
+  const byTs = new Map<string, TelemetryPoint[]>();
+  for (const point of sorted) {
+    const bucket = byTs.get(point.ts) ?? [];
+    bucket.push(point);
+    byTs.set(point.ts, bucket);
+  }
+
+  const rows: TelemetryTableRow[] = [];
+  const orderedTs = [...byTs.keys()].sort(
+    (a, b) => new Date(b).getTime() - new Date(a).getTime(),
+  );
+
+  for (const ts of orderedTs) {
+    const pts = byTs.get(ts) ?? [];
+    const rowBuckets: Record<string, unknown>[] = [];
+
+    for (const point of pts) {
+      let placed = false;
+      for (const row of rowBuckets) {
+        if (row[point.metric] === undefined) {
+          row[point.metric] = point.value;
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        rowBuckets.push({ [point.metric]: point.value });
+      }
+    }
+
+    for (const values of rowBuckets) {
+      rows.push({ ts, values });
+    }
+  }
 
   return { rows, metrics };
 }

@@ -7,6 +7,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api, setToken } from "../api";
+import { BeePlanLogo } from "../components/BeePlanLogo";
 import { consumeReturnUrl, returnPathFromState } from "../utils/returnUrl";
 import { toUserFacingError } from "../utils/userFacingError";
 
@@ -46,10 +47,10 @@ export function LoginPage() {
           if (!login.isPending) login.mutate();
         }}
       >
-        <Typography variant="h4" gutterBottom color="primary">
-          BeePlan
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", mb: 1 }}>
+          <BeePlanLogo height={56} />
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: "center" }}>
           Войдите для управления пасеками и просмотра телеметрии.
         </Typography>
         <TextField

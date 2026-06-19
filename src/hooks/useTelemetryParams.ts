@@ -1,6 +1,11 @@
 import { useCallback, useMemo } from "react";
 import dayjs, { type Dayjs } from "dayjs";
 import { useSearchParams } from "react-router-dom";
+import {
+  DEFAULT_TELEMETRY_PRESET,
+  loadStoredTelemetryPeriod,
+  saveStoredTelemetryPeriod,
+} from "./telemetryPeriodStorage";
 import type { Preset } from "../utils/telemetry";
 
 function presetRange(preset: Preset): { from: Dayjs; to: Dayjs } {
@@ -17,7 +22,7 @@ function presetRange(preset: Preset): { from: Dayjs; to: Dayjs } {
     case "30d":
       return { from: to.subtract(30, "day"), to };
     default:
-      return { from: to.subtract(7, "day"), to };
+      return { from: to.subtract(24, "hour"), to };
   }
 }
 
@@ -33,8 +38,12 @@ export function useTelemetryPeriod(): {
 } {
   const [params, setParams] = useSearchParams();
   const rawPreset = params.get("preset") as Preset | null;
-  const preset: Preset =
-    rawPreset && ["1h", "24h", "7d", "14d", "30d", "custom"].includes(rawPreset) ? rawPreset : "1h";
+  const urlPreset =
+    rawPreset && ["1h", "24h", "7d", "14d", "30d", "custom"].includes(rawPreset)
+      ? rawPreset
+      : null;
+  const stored = useMemo(() => loadStoredTelemetryPeriod(), []);
+  const preset: Preset = urlPreset ?? stored.preset ?? DEFAULT_TELEMETRY_PRESET;
 
   const rawFrom = params.get("from");
   const rawTo = params.get("to");
@@ -43,8 +52,12 @@ export function useTelemetryPeriod(): {
     const range =
       preset === "custom"
         ? {
-            from: rawFrom ? dayjs(rawFrom) : presetRange("1h").from,
-            to: rawTo ? dayjs(rawTo) : dayjs(),
+            from: rawFrom
+              ? dayjs(rawFrom)
+              : stored.from
+                ? dayjs(stored.from)
+                : presetRange(DEFAULT_TELEMETRY_PRESET).from,
+            to: rawTo ? dayjs(rawTo) : stored.to ? dayjs(stored.to) : dayjs(),
           }
         : presetRange(preset);
     return {
@@ -53,10 +66,18 @@ export function useTelemetryPeriod(): {
       fromIso: range.from.toISOString(),
       toIso: range.to.toISOString(),
     };
-  }, [preset, rawFrom, rawTo]);
+  }, [preset, rawFrom, rawTo, stored.from, stored.to]);
+
+  const persist = useCallback((p: Preset, fromIso?: string, toIso?: string) => {
+    saveStoredTelemetryPeriod({
+      preset: p,
+      ...(p === "custom" && fromIso && toIso ? { from: fromIso, to: toIso } : {}),
+    });
+  }, []);
 
   const setPreset = useCallback(
     (p: Preset) => {
+      persist(p);
       setParams((prev) => {
         const next = new URLSearchParams(prev);
         next.set("preset", p);
@@ -67,31 +88,35 @@ export function useTelemetryPeriod(): {
         return next;
       });
     },
-    [setParams],
+    [setParams, persist],
   );
 
   const setFrom = useCallback(
     (v: Dayjs) => {
+      const fromIsoVal = v.toISOString();
+      persist("custom", fromIsoVal, to.toISOString());
       setParams((prev) => {
         const next = new URLSearchParams(prev);
         next.set("preset", "custom");
-        next.set("from", v.toISOString());
+        next.set("from", fromIsoVal);
         return next;
       });
     },
-    [setParams],
+    [setParams, persist, to],
   );
 
   const setTo = useCallback(
     (v: Dayjs) => {
+      const toIsoVal = v.toISOString();
+      persist("custom", from.toISOString(), toIsoVal);
       setParams((prev) => {
         const next = new URLSearchParams(prev);
         next.set("preset", "custom");
-        next.set("to", v.toISOString());
+        next.set("to", toIsoVal);
         return next;
       });
     },
-    [setParams],
+    [setParams, persist, from],
   );
 
   return {

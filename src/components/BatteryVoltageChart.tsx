@@ -23,6 +23,7 @@ import {
   DATA_GAP_AREA_PROPS,
   findDataGaps,
   formatChartLabel,
+  chartXAxisProps,
   insertGapBreaks,
   resolvePeriodBounds,
 } from "../utils/telemetry";
@@ -104,12 +105,14 @@ export function BatteryVoltageChart({
     if (tsValues.length === 0) {
       return [periodFromMs ?? 0, periodToMs ?? 1];
     }
-    return [periodFromMs ?? Math.min(...tsValues), periodToMs ?? Math.max(...tsValues)];
+    const nums = tsValues.filter((ts): ts is number => typeof ts === "number");
+    return [periodFromMs ?? Math.min(...nums), periodToMs ?? Math.max(...nums)];
   }, [chartData, periodFromMs, periodToMs]);
 
   const lastPercent = rows.at(-1)?.percent;
   const batteryColor =
     typeof lastPercent === "number" ? statusColor(batteryStatusLevel(lastPercent)) : "#2e7d32";
+  const xAxis = chartXAxisProps(periodFrom, periodTo);
 
   return (
     <Paper sx={{ p: 2, mb: 2 }}>
@@ -137,9 +140,12 @@ export function BatteryVoltageChart({
                 type="number"
                 domain={xDomain}
                 scale="time"
-                minTickGap={32}
+                minTickGap={xAxis.minTickGap}
+                height={xAxis.height}
+                angle={xAxis.angle}
+                textAnchor={xAxis.textAnchor}
                 tick={{ fontSize: 11 }}
-                tickFormatter={(ts) => formatChartLabel(ts as number)}
+                tickFormatter={xAxis.tickFormatter}
               />
               <YAxis
                 yAxisId="volts"

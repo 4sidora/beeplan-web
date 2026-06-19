@@ -64,14 +64,16 @@ export function EdgeDeviceCard({ item, colonyLabel }: Props) {
               flexWrap: "nowrap",
             }}
           >
-            <Typography variant="h6" component="h2" noWrap sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="h6" component="h2" noWrap sx={{ minWidth: 0, flexShrink: 1 }}>
               {item.name || item.public_id}
             </Typography>
-            <DeviceOnlineDot
-              lastSeenAt={item.last_seen_at}
-              wakeIntervalSec={item.wake_interval_sec ?? 3600}
-            />
-            <DeviceStatusIndicators recentTelemetry={item.recent_telemetry} iconsOnly />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0 }}>
+              <DeviceOnlineDot
+                lastSeenAt={item.last_seen_at}
+                wakeIntervalSec={item.wake_interval_sec ?? 3600}
+              />
+              <DeviceStatusIndicators recentTelemetry={item.recent_telemetry} iconsOnly />
+            </Box>
           </Box>
 
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: 1.5 }}>

@@ -46,11 +46,13 @@ export function ConcentratorCard({ item, apiaryLabel }: Props) {
               flexWrap: "nowrap",
             }}
           >
-            <Typography variant="h6" component="h2" noWrap sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="h6" component="h2" noWrap sx={{ minWidth: 0, flexShrink: 1 }}>
               {item.name}
             </Typography>
-            <DeviceOnlineDot lastSeenAt={item.last_seen_at} />
-            <DeviceStatusIndicators recentTelemetry={item.recent_telemetry} iconsOnly />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0 }}>
+              <DeviceOnlineDot lastSeenAt={item.last_seen_at} />
+              <DeviceStatusIndicators recentTelemetry={item.recent_telemetry} iconsOnly />
+            </Box>
           </Box>
 
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>

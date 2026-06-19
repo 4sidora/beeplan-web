@@ -13,7 +13,7 @@ import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { api, type FirmwareBuild } from "../api";
 import { EspWebInstallButton, isWebSerialSupported } from "../components/EspWebInstallButton";
@@ -90,35 +90,6 @@ export function EdgeInstallPage() {
 
   const gatewayReady = Boolean(concentrator.data?.gateway_mac);
   const channelReady = concentrator.data?.wifi_channel != null;
-  const slotEnsureAttempted = useRef(false);
-
-  const ensureTelemetrySlot = useMutation({
-    mutationFn: () => api.ensureEdgeTelemetrySlot(edgeDeviceId!),
-    onSuccess: () => device.refetch(),
-    onError: (e: Error) => showError(e.message),
-  });
-
-  useEffect(() => {
-    if (activeStep !== 2) {
-      slotEnsureAttempted.current = false;
-      return;
-    }
-    if (edgeDeviceId == null || device.isLoading || device.data?.telemetry_slot_sec != null) {
-      return;
-    }
-    if (slotEnsureAttempted.current || ensureTelemetrySlot.isPending) {
-      return;
-    }
-    slotEnsureAttempted.current = true;
-    ensureTelemetrySlot.mutate();
-  }, [
-    activeStep,
-    edgeDeviceId,
-    device.isLoading,
-    device.data?.telemetry_slot_sec,
-    ensureTelemetrySlot.isPending,
-    ensureTelemetrySlot,
-  ]);
 
   const startBuild = useMutation({
     mutationFn: () =>
@@ -330,18 +301,7 @@ export function EdgeInstallPage() {
               value={wakeInterval}
               onChange={(e) => setWakeInterval(Number(e.target.value))}
               fullWidth
-              helperText="По умолчанию 3600 с (раз в час). TDMA-слот назначается автоматически."
-            />
-            <TextField
-              label="TDMA-слот (сек)"
-              value={
-                ensureTelemetrySlot.isPending
-                  ? "…"
-                  : device.data?.telemetry_slot_sec ?? edge.telemetry_slot_sec ?? "—"
-              }
-              fullWidth
-              InputProps={{ readOnly: true }}
-              helperText="Смещение внутри часа; назначается сервером автоматически"
+              helperText="По умолчанию 3600 с (раз в час). Устройства сами разнесутся по времени после включения."
             />
             <TextField
               label="Wi‑Fi канал базовой станции"
