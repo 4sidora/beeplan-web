@@ -401,7 +401,7 @@ export function ConcentratorDetailPage() {
           margin="normal"
           value={bulkWakeInterval}
           onChange={(e) => setBulkWakeInterval(Number(e.target.value))}
-          inputProps={{ min: 10, max: 86400, step: 1 }}
+          slotProps={{ htmlInput: { min: 10, max: 86400, step: 1 } }}
           helperText="Применится ко всем устройствам этой базовой станции через gateway при следующем контакте."
         />
       </FormDialog>

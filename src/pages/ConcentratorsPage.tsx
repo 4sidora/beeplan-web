@@ -41,13 +41,11 @@ export function ConcentratorsPage() {
   });
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editItem, setEditItem] = useState<Concentrator | null>(null);
   const [name, setName] = useState("");
   const [deleteItem, setDeleteItem] = useState<Concentrator | null>(null);
   const [nameLoading, setNameLoading] = useState(false);
 
   const openCreate = async () => {
-    setEditItem(null);
     setDialogOpen(true);
     setNameLoading(true);
     setName("");
@@ -61,22 +59,15 @@ export function ConcentratorsPage() {
     }
   };
 
-  const openEdit = (item: Concentrator) => {
-    setEditItem(item);
-    setName(item.name);
-    setDialogOpen(true);
-  };
-
   const save = useMutation({
     mutationFn: async () => {
-      if (editItem) return api.updateConcentrator(editItem.id, name);
       if (apiaryId == null) throw new Error("Выберите пасеку");
       return api.createConcentrator(apiaryId, name);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["concentrators", apiaryId] });
       setDialogOpen(false);
-      showSuccess(editItem ? "Базовая станция обновлена" : "Базовая станция создана");
+      showSuccess("Базовая станция создана");
     },
     onError: (e) => showError(String((e as Error).message)),
   });
@@ -119,8 +110,7 @@ export function ConcentratorsPage() {
             <Grid key={row.id} size={{ xs: 12, sm: 6, lg: 4 }}>
               <ConcentratorCard
                 item={row}
-                apiaryId={apiaryId}
-                onEdit={() => openEdit(row)}
+                apiaryLabel={apiaries.data?.find((a) => a.id === apiaryId)?.name ?? "—"}
               />
             </Grid>
           ))}
@@ -128,21 +118,19 @@ export function ConcentratorsPage() {
       )}
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>
-          {editItem ? "Редактировать базовую станцию" : "Новая базовая станция"}
-        </DialogTitle>
+        <DialogTitle>Новая базовая станция</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
             fullWidth
             label="Название"
             margin="normal"
-            placeholder={editItem ? undefined : BASE_STATION_NAME_PLACEHOLDER}
+            placeholder={BASE_STATION_NAME_PLACEHOLDER}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            disabled={!editItem && nameLoading}
+            disabled={nameLoading}
             slotProps={
-              !editItem && nameLoading
+              nameLoading
                 ? {
                     input: {
                       endAdornment: (
@@ -157,25 +145,11 @@ export function ConcentratorsPage() {
           />
         </DialogContent>
         <DialogActions>
-          {editItem ? (
-            <Button
-              color="error"
-              onClick={() => {
-                setDialogOpen(false);
-                setDeleteItem(editItem);
-              }}
-              sx={{ mr: "auto" }}
-            >
-              Удалить
-            </Button>
-          ) : null}
           <Button onClick={() => setDialogOpen(false)}>Отмена</Button>
           <Button
             variant="contained"
             onClick={() => save.mutate()}
-            disabled={
-              (editItem ? !name.trim() : nameLoading || !name.trim()) || save.isPending
-            }
+            disabled={nameLoading || !name.trim() || save.isPending}
           >
             Сохранить
           </Button>

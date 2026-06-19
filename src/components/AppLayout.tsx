@@ -19,22 +19,25 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate, type NavLinkProps } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { api, setToken } from "../api";
 import { BeePlanLogo } from "./BeePlanLogo";
 import { TOOLBAR_HEIGHT } from "../constants/layout";
 
 const drawerWidth = 240;
 
+type NavIsActiveFn = (data: { isActive: boolean; location: { pathname: string } }) => boolean;
+
 type NavItem = {
   to: string;
   label: string;
   icon: React.ReactNode;
   end?: boolean;
-  isActive?: NavLinkProps["isActive"];
+  isActive?: NavIsActiveFn;
 };
 
-function isDevicesNavActive({ pathname }: { pathname: string }) {
+function isDevicesNavActive({ location }: { location: { pathname: string } }) {
+  const pathname = location.pathname;
   return (
     pathname === "/devices" ||
     (pathname.startsWith("/devices/") && !pathname.startsWith("/devices/monitor"))

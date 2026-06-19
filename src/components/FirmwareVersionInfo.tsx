@@ -177,7 +177,7 @@ export function FirmwareVersionInfo({
 
   return (
     <Alert severity="info" sx={{ mb: 2, "& .MuiAlert-message": { width: "100%" } }}>
-      <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700 }} gutterBottom>
         Версия прошивки
       </Typography>
       {content}

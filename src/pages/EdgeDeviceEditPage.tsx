@@ -146,7 +146,7 @@ export function EdgeDeviceEditPage() {
           type="number"
           value={wakeInterval}
           onChange={(e) => setWakeInterval(Number(e.target.value))}
-          inputProps={{ min: 10, max: 86400, step: 1 }}
+          slotProps={{ htmlInput: { min: 10, max: 86400, step: 1 } }}
           helperText={`Сейчас в БД: ${formatWakeInterval(d.wake_interval_sec)}. Новое значение дойдёт до устройства через базовую станцию при следующем контакте.`}
         />
         <Alert severity="info" sx={{ mt: 1 }}>

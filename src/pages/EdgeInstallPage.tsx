@@ -307,7 +307,7 @@ export function EdgeInstallPage() {
               label="Wi‑Fi канал базовой станции"
               value={concentrator.data?.wifi_channel ?? "—"}
               fullWidth
-              InputProps={{ readOnly: true }}
+              slotProps={{ input: { readOnly: true } }}
             />
             <FormControlLabel
               control={
