@@ -24,6 +24,7 @@ import {
   findDataGaps,
   formatChartLabel,
   chartXAxisProps,
+  chartXAxisTicks,
   insertGapBreaks,
   resolvePeriodBounds,
 } from "../utils/telemetry";
@@ -113,6 +114,7 @@ export function BatteryVoltageChart({
   const batteryColor =
     typeof lastPercent === "number" ? statusColor(batteryStatusLevel(lastPercent)) : "#2e7d32";
   const xAxis = chartXAxisProps(periodFrom, periodTo);
+  const xTicks = useMemo(() => chartXAxisTicks(xDomain[0], xDomain[1]), [xDomain]);
 
   return (
     <Paper sx={{ p: 2, mb: 2 }}>
@@ -140,7 +142,7 @@ export function BatteryVoltageChart({
                 type="number"
                 domain={xDomain}
                 scale="time"
-                minTickGap={xAxis.minTickGap}
+                ticks={xTicks}
                 height={xAxis.height}
                 angle={xAxis.angle}
                 textAnchor={xAxis.textAnchor}

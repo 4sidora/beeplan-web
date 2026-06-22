@@ -51,6 +51,49 @@ export function formatChartAxisLabel(ts: string | number, periodMs: number): str
   return d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit" });
 }
 
+export function chartXAxisTicks(fromMs: number, toMs: number, maxTicks = 7): number[] {
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || toMs <= fromMs) {
+    return Number.isFinite(fromMs) ? [fromMs] : [];
+  }
+  const range = toMs - fromMs;
+
+  const candidates = [
+    5 * 60_000,
+    10 * 60_000,
+    15 * 60_000,
+    30 * 60_000,
+    60 * 60_000,
+    2 * 3_600_000,
+    4 * 3_600_000,
+    6 * 3_600_000,
+    12 * 3_600_000,
+    24 * 3_600_000,
+    2 * 24 * 3_600_000,
+    7 * 24 * 3_600_000,
+  ];
+  let stepMs = candidates[candidates.length - 1];
+  for (const candidate of candidates) {
+    if (range / candidate <= maxTicks) {
+      stepMs = candidate;
+      break;
+    }
+  }
+
+  const ticks: number[] = [];
+  const start = Math.ceil(fromMs / stepMs) * stepMs;
+  for (let t = start; t <= toMs; t += stepMs) {
+    ticks.push(t);
+  }
+  if (ticks.length === 0 || ticks[0] - fromMs > stepMs * 0.2) {
+    ticks.unshift(fromMs);
+  }
+  const last = ticks[ticks.length - 1];
+  if (toMs - last > stepMs * 0.2) {
+    ticks.push(toMs);
+  }
+  return ticks.slice(0, maxTicks + 1);
+}
+
 export function chartXAxisProps(periodFrom?: string | number, periodTo?: string | number) {
   const { periodFromMs, periodToMs } = resolvePeriodBounds(periodFrom, periodTo);
   const fromMs = periodFromMs ?? 0;
@@ -59,7 +102,6 @@ export function chartXAxisProps(periodFrom?: string | number, periodTo?: string 
   const dense = periodMs > 25 * 3600 * 1000;
   return {
     periodMs,
-    minTickGap: dense ? 56 : 40,
     angle: dense ? -35 : 0,
     textAnchor: dense ? ("end" as const) : ("middle" as const),
     height: dense ? 52 : 30,

@@ -64,7 +64,7 @@ export function GatewayInstallPage() {
   const [wifiSsid, setWifiSsid] = useState("");
   const [wifiPassword, setWifiPassword] = useState("");
   const [gatewayWifiChannel, setGatewayWifiChannel] = useState(6);
-  const [cellularApn, setCellularApn] = useState("");
+  const [cellularApn, setCellularApn] = useState("internet");
   const [cellularUser, setCellularUser] = useState("");
   const [cellularPass, setCellularPass] = useState("");
   const [apiBaseUrl, setApiBaseUrl] = useState(deviceApiUrl);
@@ -84,6 +84,12 @@ export function GatewayInstallPage() {
       setApiaryId(concentrator.data.apiary_id);
     }
   }, [concentrator.data?.apiary_id, setApiaryId]);
+
+  useEffect(() => {
+    if (concentrator.data?.wifi_channel != null) {
+      setGatewayWifiChannel(concentrator.data.wifi_channel);
+    }
+  }, [concentrator.data?.wifi_channel]);
 
   const startBuild = useMutation({
     mutationFn: () =>
@@ -250,6 +256,13 @@ export function GatewayInstallPage() {
                   value={wifiSsid}
                   onChange={(e) => setWifiSsid(e.target.value)}
                   fullWidth
+                  slotProps={{
+                    htmlInput: {
+                      id: "beeplan-gw-wifi-ssid",
+                      name: "beeplan-gw-wifi-ssid",
+                      autoComplete: "off",
+                    },
+                  }}
                 />
                 <TextField
                   label="Wi‑Fi пароль"
@@ -257,6 +270,13 @@ export function GatewayInstallPage() {
                   value={wifiPassword}
                   onChange={(e) => setWifiPassword(e.target.value)}
                   fullWidth
+                  slotProps={{
+                    htmlInput: {
+                      id: "beeplan-gw-wifi-password",
+                      name: "beeplan-gw-wifi-password",
+                      autoComplete: "new-password",
+                    },
+                  }}
                 />
               </>
             ) : (
@@ -268,12 +288,26 @@ export function GatewayInstallPage() {
                   placeholder="internet"
                   fullWidth
                   required
+                  slotProps={{
+                    htmlInput: {
+                      id: "beeplan-gw-cell-apn",
+                      name: "beeplan-gw-cell-apn",
+                      autoComplete: "off",
+                    },
+                  }}
                 />
                 <TextField
                   label="Логин GPRS (если нужен)"
                   value={cellularUser}
                   onChange={(e) => setCellularUser(e.target.value)}
                   fullWidth
+                  slotProps={{
+                    htmlInput: {
+                      id: "beeplan-gw-cell-user",
+                      name: "beeplan-gw-cell-user",
+                      autoComplete: "off",
+                    },
+                  }}
                 />
                 <TextField
                   label="Пароль GPRS (если нужен)"
@@ -281,11 +315,26 @@ export function GatewayInstallPage() {
                   value={cellularPass}
                   onChange={(e) => setCellularPass(e.target.value)}
                   fullWidth
+                  slotProps={{
+                    htmlInput: {
+                      id: "beeplan-gw-cell-pass",
+                      name: "beeplan-gw-cell-pass",
+                      autoComplete: "new-password",
+                    },
+                  }}
                 />
                 <TextField
                   label="Канал Wi‑Fi для ESP-NOW"
                   type="number"
-                  slotProps={{ htmlInput: { min: 1, max: 13 } }}
+                  slotProps={{
+                    htmlInput: {
+                      id: "beeplan-gw-espnow-channel",
+                      name: "beeplan-gw-espnow-channel",
+                      autoComplete: "off",
+                      min: 1,
+                      max: 13,
+                    },
+                  }}
                   helperText="Должен совпадать с каналом сети edge-устройств (обычно 1–13)"
                   value={gatewayWifiChannel}
                   onChange={(e) => setGatewayWifiChannel(Number(e.target.value))}
@@ -294,9 +343,9 @@ export function GatewayInstallPage() {
               </>
             )}
 
-            <TextField
-              label="URL API для устройства"
-              helperText="Публичный адрес API (например https://api.beeplan.tech)"
+                <TextField
+                  label="URL API для устройства"
+                  helperText="Для сотовой связи укажите http://api.beeplan.tech (без https — SIM800 не тянет TLS надежно)"
               value={apiBaseUrl}
               onChange={(e) => setApiBaseUrl(e.target.value)}
               fullWidth

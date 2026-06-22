@@ -16,6 +16,7 @@ export function formatTelemetryValue(metric: string, value: unknown): string {
       return `${Math.round(v.percent)} %`;
     }
     if (typeof v.dbm === "number") return `${v.dbm} dBm`;
+    if (metric === "weight_kg" && typeof v.kg === "number") return `${v.kg.toFixed(2)} кг`;
     if (typeof v.version === "string") return v.version;
     if (v.v != null) return String(v.v);
   }

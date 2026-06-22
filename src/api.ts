@@ -404,6 +404,11 @@ export const api = {
     cellular_pass?: string;
     wake_interval_sec?: number;
     debug_serial?: boolean;
+    edge_product_type?: "multisensor" | "scales";
+    hx711_dout_pin?: number;
+    hx711_sck_pin?: number;
+    ds18b20_pin?: number;
+    weight_mode?: "full" | "half";
   }) =>
     apiFetch<FirmwareBuild>("/v1/firmware/builds", {
       method: "POST",

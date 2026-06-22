@@ -3,7 +3,11 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Checkbox from "@mui/material/Checkbox";
+import FormControl from "@mui/material/FormControl";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
 import Paper from "@mui/material/Paper";
 import Step from "@mui/material/Step";
 import StepLabel from "@mui/material/StepLabel";
@@ -54,6 +58,10 @@ export function EdgeInstallPage() {
   const [wakeInterval, setWakeInterval] = useState(3600);
   const [debugSerial, setDebugSerial] = useState(true);
   const [board, setBoard] = useState<FirmwareBoardId>(() => defaultBoardForProfile("edge"));
+  const [hx711DoutPin, setHx711DoutPin] = useState(1);
+  const [hx711SckPin, setHx711SckPin] = useState(3);
+  const [ds18b20Pin, setDs18b20Pin] = useState(4);
+  const [weightMode, setWeightMode] = useState<"full" | "half">("full");
   const [build, setBuild] = useState<FirmwareBuild | null>(null);
   const [polling, setPolling] = useState(false);
 
@@ -100,6 +108,15 @@ export function EdgeInstallPage() {
         edge_device_id: edgeDeviceId!,
         wake_interval_sec: wakeInterval,
         debug_serial: debugSerial,
+        edge_product_type: productType,
+        ...(productType === "scales"
+          ? {
+              hx711_dout_pin: hx711DoutPin,
+              hx711_sck_pin: hx711SckPin,
+              ds18b20_pin: ds18b20Pin,
+              weight_mode: weightMode,
+            }
+          : {}),
       }),
     onSuccess: (result) => {
       setBuild(result);
@@ -315,6 +332,51 @@ export function EdgeInstallPage() {
               }
               label="Отладочный UART-лог (рекомендуется при настройке)"
             />
+            {productType === "scales" && (
+              <>
+                <Alert severity="info">
+                  Рекомендуемые GPIO для TTGO T-Energy: HX711 DOUT — GPIO1, SCK — GPIO3, DS18B20 — GPIO4.
+                  На SCK желателен подтягивающий резистор 10 кОм к 3.3 V для power-down в deep sleep.
+                </Alert>
+                <TextField
+                  label="HX711 DOUT (DT)"
+                  type="number"
+                  value={hx711DoutPin}
+                  onChange={(e) => setHx711DoutPin(Number(e.target.value))}
+                  fullWidth
+                  slotProps={{ htmlInput: { min: 0, max: 21 } }}
+                />
+                <TextField
+                  label="HX711 SCK (PD_SCK)"
+                  type="number"
+                  value={hx711SckPin}
+                  onChange={(e) => setHx711SckPin(Number(e.target.value))}
+                  fullWidth
+                  slotProps={{ htmlInput: { min: 0, max: 21 } }}
+                />
+                <TextField
+                  label="DS18B20 (температура)"
+                  type="number"
+                  value={ds18b20Pin}
+                  onChange={(e) => setDs18b20Pin(Number(e.target.value))}
+                  fullWidth
+                  helperText="Для компенсации температурного дрейфа тензодатчика"
+                  slotProps={{ htmlInput: { min: 0, max: 21 } }}
+                />
+                <FormControl fullWidth>
+                  <InputLabel id="weight-mode-label">Режим взвешивания</InputLabel>
+                  <Select
+                    labelId="weight-mode-label"
+                    label="Режим взвешивания"
+                    value={weightMode}
+                    onChange={(e) => setWeightMode(e.target.value as "full" | "half")}
+                  >
+                    <MenuItem value="full">Полный вес платформы</MenuItem>
+                    <MenuItem value="half">Половина (одна сторона ×2 в отчёте)</MenuItem>
+                  </Select>
+                </FormControl>
+              </>
+            )}
             <Box sx={{ display: "flex", gap: 1 }}>
               <Button onClick={() => setActiveStep(1)}>Назад</Button>
               <Button
